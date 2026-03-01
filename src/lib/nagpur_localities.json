@@ -1,0 +1,56 @@
+[
+  {
+    "name": "Wardha Road",
+    "connectedTo": ["MIHAN", "Airport", "AIIMS", "IIM Nagpur"],
+    "schools": ["Narayana Vidyalayam", "Bhavan's BP Vidya Mandir", "Montfort School"],
+    "hospitals": ["AIIMS", "National Cancer Institute (NCI)"],
+    "upcomingInfra": ["Metro Phase 2 Extension", "Outer Ring Road connectivity"],
+    "avgPlotPrice": "₹2,500 - ₹4,500 per sq ft",
+    "appreciation": "12-15% annually due to MIHAN expansion"
+  },
+  {
+    "name": "Hingna Road",
+    "connectedTo": ["MIDC", "Wadi", "Lata Mangeshkar Hospital"],
+    "schools": ["School of Scholars", "Delhi Public School (DPS)"],
+    "hospitals": ["Lata Mangeshkar Hospital", "Orange City Hospital"],
+    "upcomingInfra": ["Hingna Metro Station operations", "New MIDC IT Parks"],
+    "avgPlotPrice": "₹1,800 - ₹3,000 per sq ft",
+    "appreciation": "10-12% annually as industrial hub expands"
+  },
+  {
+    "name": "Besa-Pipla Road",
+    "connectedTo": ["Manish Nagar", "Wardha Road", "Umred Road"],
+    "schools": ["Podar International School", "Bhavan's BP Vidya Mandir"],
+    "hospitals": ["KIMS Kingsway", "Suretech Hospital"],
+    "upcomingInfra": ["Road widening projects", "New commercial complexes"],
+    "avgPlotPrice": "₹2,800 - ₹4,000 per sq ft",
+    "appreciation": "10-14% annually as a preferred residential hub"
+  },
+  {
+    "name": "Katol Road",
+    "connectedTo": ["Sadar", "Gorewada Zoo", "Fetri"],
+    "schools": ["Centre Point School", "SFS High School"],
+    "hospitals": ["Alexis Hospital", "Nelson Hospital"],
+    "upcomingInfra": ["Gorewada International Zoo expansion", "Highway widening"],
+    "avgPlotPrice": "₹2,000 - ₹3,500 per sq ft",
+    "appreciation": "8-10% annually, steady growth area"
+  },
+  {
+    "name": "Umred Road",
+    "connectedTo": ["Dighori", "Besa", "Outer Ring Road"],
+    "schools": ["Jingle Bells Kindergarten", "Somalwar High School"],
+    "hospitals": ["Seven Star Hospital", "Government Medical College"],
+    "upcomingInfra": ["Outer Ring Road completion", "Proposed logistical hubs"],
+    "avgPlotPrice": "₹1,500 - ₹2,500 per sq ft",
+    "appreciation": "15-18% annually (high potential emerging market)"
+  },
+  {
+    "name": "Ghoti (Near Wardha Road)",
+    "connectedTo": ["Wardha Road", "Outer Ring Road", "MIHAN phase 2"],
+    "schools": ["Local ZP Schools, accessible to Wardha Road schools"],
+    "hospitals": ["AIIMS (15 mins away)"],
+    "upcomingInfra": ["AMRDA Sanctioned Layouts", "New bypass roads"],
+    "avgPlotPrice": "₹800 - ₹1,500 per sq ft",
+    "appreciation": "20-25% annually (early investment stage)"
+  }
+]

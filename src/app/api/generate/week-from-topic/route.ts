@@ -1,0 +1,143 @@
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { prisma } from "@/lib/prisma";
+import { callGemini } from "@/lib/gemini";
+import { SYSTEM_PROMPT_BASE, buildWeekFromTopicPrompt } from "@/lib/prompts";
+import { authOptions } from "@/lib/auth";
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const { topic, niche, audience, platforms, languages, primaryLanguage, researchContext } = body;
+
+    if (!topic) {
+      return NextResponse.json({ error: "Topic is required" }, { status: 400 });
+    }
+
+    let brain: any = null;
+    let userId: string | null = null;
+    const session = await getServerSession(authOptions);
+    if (session?.user?.email) {
+      const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+      if (user) {
+        userId = user.id;
+        brain = await prisma.contentBrain.findUnique({ where: { userId: user.id } });
+      }
+    }
+
+    // ── E9: Fetch golden examples to inject into Gemini prompt ──────────────
+    let goldenExamples: string[] = [];
+    if (userId) {
+      const goldens = await prisma.generatedAsset.findMany({
+        where: { userId, isGoldenExample: true },
+        take: 3,
+        orderBy: { createdAt: "desc" },
+        select: { body: true },
+      });
+      goldenExamples = goldens.map((g: { body: string }) => g.body);
+    }
+
+    const ctaList = brain?.ctaList ? JSON.parse(brain.ctaList) : [];
+
+    const userPrompt = buildWeekFromTopicPrompt({
+      topic,
+      brandName: brain?.brandName || undefined,
+      niche: niche || brain?.niche || "Real Estate",
+      audience: audience || brain?.audienceDescription || "First-time buyers and investors in India",
+      platforms: platforms || ["Instagram", "LinkedIn", "WhatsApp"],
+      languages: languages || ["English", "Hinglish"],
+      primaryLanguage: primaryLanguage || brain?.primaryLanguage || "English",
+      brandVoice: brain?.tone || undefined,
+      ctaList: ctaList.length > 0 ? ctaList : undefined,
+      contactInfo: brain?.phoneNumber || brain?.email || undefined,
+      goldenExamples: goldenExamples.length > 0
+        ? goldenExamples.join("\n\n---\n\n")
+        : brain?.goldenExamples || undefined,
+      researchContext: researchContext || undefined,
+    });
+
+    const result = await callGemini(SYSTEM_PROMPT_BASE, userPrompt, {
+      platforms: platforms || ["Instagram", "LinkedIn", "WhatsApp"],
+      languages: languages || ["English", "Hinglish"],
+    });
+
+    // ── Generate Image Prompts for each post ──────────────────────────────
+    if (result.posts && result.posts.length > 0) {
+      await Promise.all(
+        result.posts.map(async (post: any) => {
+          try {
+            const apiKey = process.env.GEMINI_API_KEY;
+            if (apiKey && apiKey.startsWith("AIza")) {
+              const promptInstruction = "Write a Stable Diffusion image prompt for this Indian real estate social post. Under 50 words. Warm colours, professional, Indian context. Return ONLY the prompt text, no quotes or intro.";
+              const res = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    contents: [{ role: "user", parts: [{ text: `${promptInstruction}\n\nPOST TEXT:\n${post.body}` }] }],
+                    generationConfig: { temperature: 0.7, maxOutputTokens: 100 },
+                  }),
+                }
+              );
+              if (res.ok) {
+                const data = await res.json();
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (text) post.imagePrompt = text.trim();
+              }
+            }
+          } catch (e) {
+            console.error("Failed to generate image prompt for post", e);
+          }
+        })
+      );
+    }
+
+    // ── E5: Auto-save each post to GeneratedAsset DB ─────────────────────
+    if (userId && result.posts && result.posts.length > 0) {
+      await Promise.allSettled(
+        result.posts.map(async (post: any) => {
+          try {
+            let platform = (post.platform || "instagram").toLowerCase() as any;
+            if (platform.includes("youtube")) platform = "youtube";
+            else if (platform.includes("twitter") || platform === "x") platform = "x";
+            else if (platform.includes("linkedin")) platform = "linkedin";
+            else if (platform.includes("facebook")) platform = "facebook";
+            else if (platform.includes("whatsapp")) platform = "whatsapp";
+            else if (platform.includes("website")) platform = "website";
+            else platform = "instagram";
+            const lang = (post.language || primaryLanguage || "english").toLowerCase() as any;
+            const saved = await prisma.generatedAsset.create({
+              data: {
+                userId: userId!,
+                type: "post",
+                platform,
+                language: lang,
+                title: post.title || topic.slice(0, 100),
+                body: post.body,
+                tags: Array.isArray(post.tags) ? post.tags : [],
+                cta: post.cta || null,
+                notes: post.notes || null,
+                imagePrompt: post.imagePrompt || null,
+                qualityScore: post.qualityScore || null,
+              },
+            });
+            // Attach DB id back so client can reference it
+            post.assetId = saved.id;
+          } catch (saveErr) {
+            console.error("[E5_SAVE_ERROR]", saveErr);
+          }
+        })
+      );
+    }
+
+    return NextResponse.json(result);
+
+  } catch (error: any) {
+    console.error("[GENERATE_WEEK_ERROR]", error?.message || error);
+    return NextResponse.json(
+      { error: error?.message || "Generation failed." },
+      { status: 500 }
+    );
+  }
+}

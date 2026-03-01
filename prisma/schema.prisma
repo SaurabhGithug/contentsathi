@@ -1,0 +1,506 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum PlatformType {
+  instagram
+  linkedin
+  youtube
+  x
+  facebook
+  whatsapp
+  website
+}
+
+enum LanguageType {
+  english
+  hindi
+  marathi
+  hinglish
+}
+
+enum PostStatus {
+  draft
+  ready
+  scheduled
+  published
+  failed
+}
+
+enum AssetType {
+  post
+  carousel
+  shorts_script
+  blog_article
+  email_newsletter
+  whatsapp_broadcast
+  video_script
+  image_prompt
+}
+
+enum PlanTier {
+  free
+  starter
+  creator
+  agency
+}
+
+enum UrgencyLevel {
+  low
+  medium
+  high
+}
+
+enum BillingCycle {
+  monthly
+  yearly
+}
+
+enum SubscriptionStatus {
+  active
+  cancelled
+  expired
+  trial
+}
+
+model User {
+  id                    String    @id @default(cuid())
+  email                 String    @unique
+  passwordHash          String
+  name                  String?
+  phone                 String?
+  avatarUrl             String?
+  planTier              PlanTier  @default(free)
+  planExpiresAt         DateTime?
+  creditsBalance        Int       @default(100)
+  creditsLifetimeUsed   Int       @default(0)
+  trialStartedAt        DateTime?
+  trialEndsAt           DateTime?
+  linkedinPostsToday    Int       @default(0)
+  linkedinPostsResetAt  DateTime?
+  platformLangPrefs     Json?
+  onboardingCompleted   Boolean   @default(false)
+  notifyOnPublish       Boolean   @default(true)
+  notifyOnFailure       Boolean   @default(true)
+  notifyWeeklyDigest    Boolean   @default(false)
+  notifyWhatsappNumber  String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  contentBrain          ContentBrain?
+  socialAccounts        SocialAccount[]
+  generatedAssets       GeneratedAsset[]
+  calendarItems         CalendarItem[]
+  publishLogs           PublishLog[]
+  websiteConnections    WebsiteConnection[]
+  contentSuggestions    ContentSuggestion[]
+  weeklyInsights        WeeklyInsight[]
+  usageLogs             UsageLog[]
+  subscriptions         Subscription[]
+  apiKeys               ApiKey[]
+  webhookEndpoints      WebhookEndpoint[]
+  postAnalytics         PostAnalytics[]
+  whatsappSequences     WhatsAppSequence[]
+
+  @@map("users")
+}
+
+model ContentBrain {
+  id                  String        @id @default(cuid())
+  userId              String        @unique
+  user                User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brandName           String?
+  brandDescription    String?
+  industry            String?
+  location            String?
+  audienceDescription String?
+  tone                String?
+  primaryLanguage     LanguageType  @default(hinglish)
+  secondaryLanguage   LanguageType?
+  languageMixRules    String?
+  ctas                Json?
+  contactPhone        String?
+  contactEmail        String?
+  contactWebsite      String?
+  goldenExamples      String[]      // If using SQLite before, might need to change to Json for arrays if Postgres version requires
+  competitorHandles   String[]
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  @@map("content_brains")
+}
+
+model SocialAccount {
+  id                  String        @id @default(cuid())
+  userId              String
+  user                User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform            PlatformType
+  accessToken         String
+  refreshToken        String?
+  tokenExpiry         DateTime?
+  accountId           String?
+  accountName         String?
+  pageId              String?
+  pageName            String?
+  channelId           String?
+  channelName         String?
+  isActive            Boolean       @default(true)
+  lastUsedAt          DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  @@unique([userId, platform])
+  @@map("social_accounts")
+}
+
+model GeneratedAsset {
+  id                  String        @id @default(cuid())
+  userId              String
+  user                User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentAssetId       String?
+  parentAsset         GeneratedAsset? @relation("AssetRemixes", fields: [parentAssetId], references: [id])
+  remixes             GeneratedAsset[] @relation("AssetRemixes")
+  sourceId            String?
+  type                AssetType
+  platform            PlatformType?
+  language            LanguageType?
+  title               String?
+  body                String
+  tags                String[]
+  cta                 String?
+  notes               String?
+  imageUrl            String?
+  imagePrompt         String?
+  qualityScore        Int?
+  qualityIssues       Json?
+  isGoldenExample     Boolean       @default(false)
+  isCustomTemplate    Boolean       @default(false)
+  templateName        String?
+  templateVariables   Json?
+  publishCount        Int           @default(0)
+  generationHash      String?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  calendarItems       CalendarItem[]
+  publishLogs         PublishLog[]
+  postAnalytics       PostAnalytics[]
+
+  @@index([userId, platform, language])
+  @@index([generationHash])
+  @@map("generated_assets")
+}
+
+model CalendarItem {
+  id                  String        @id @default(cuid())
+  userId              String
+  user                User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  generatedAssetId    String?
+  generatedAsset      GeneratedAsset? @relation(fields: [generatedAssetId], references: [id])
+  platform            PlatformType
+  status              PostStatus    @default(draft)
+  scheduledAt         DateTime?
+  publishedAt         DateTime?
+  failedAt            DateTime?
+  failureReason       String?
+  retryCount          Int           @default(0)
+  platformPostId      String?
+  platformPostUrl     String?
+  notes               String?
+  isSuggested         Boolean       @default(false)
+  festivalTag         String?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  publishLogs         PublishLog[]
+
+  @@index([userId, scheduledAt])
+  @@index([userId, status])
+  @@map("calendar_items")
+}
+
+model PublishLog {
+  id                  String          @id @default(cuid())
+  userId              String
+  user                User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  calendarItemId      String?
+  calendarItem        CalendarItem?   @relation(fields: [calendarItemId], references: [id])
+  generatedAssetId    String?
+  generatedAsset      GeneratedAsset? @relation(fields: [generatedAssetId], references: [id])
+  platform            PlatformType
+  status              String
+  platformPostId      String?
+  platformPostUrl     String?
+  errorMessage        String?
+  errorCode           String?
+  retryCount          Int             @default(0)
+  publishedAt         DateTime?
+  createdAt           DateTime        @default(now())
+
+  postAnalytics       PostAnalytics[]
+
+  @@index([userId, platform])
+  @@index([userId, publishedAt])
+  @@map("publish_logs")
+}
+
+model PostAnalytics {
+  id                  String          @id @default(cuid())
+  userId              String
+  user                User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  publishLogId        String?
+  publishLog          PublishLog?     @relation(fields: [publishLogId], references: [id])
+  generatedAssetId    String?
+  generatedAsset      GeneratedAsset? @relation(fields: [generatedAssetId], references: [id])
+  platform            PlatformType
+  impressions         Int             @default(0)
+  reach               Int             @default(0)
+  likes               Int             @default(0)
+  comments            Int             @default(0)
+  shares              Int             @default(0)
+  saves               Int             @default(0)
+  views               Int             @default(0)
+  clicks              Int             @default(0)
+  engagementRate      Float?
+  fetchedAt           DateTime?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  @@index([userId, platform])
+  @@index([publishLogId])
+  @@map("post_analytics")
+}
+
+model WebsiteConnection {
+  id                  String          @id @default(cuid())
+  userId              String
+  user                User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  websiteName         String
+  websiteUrl          String
+  webhookUrl          String
+  apiKey              String          @default(cuid())
+  isActive            Boolean         @default(true)
+  lastSyncedAt        DateTime?
+  totalPostsSent      Int             @default(0)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  @@index([userId])
+  @@index([apiKey])
+  @@map("website_connections")
+}
+
+model ContentSuggestion {
+  id                  String          @id @default(cuid())
+  userId              String
+  user                User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topicSuggestion     String
+  reason              String
+  urgency             UrgencyLevel    @default(medium)
+  platform            PlatformType?
+  templateType        String?
+  isTrending          Boolean         @default(false)
+  festivalTag         String?
+  date                DateTime
+  wasUsed             Boolean         @default(false)
+  usedAt              DateTime?
+  createdAt           DateTime        @default(now())
+
+  @@index([userId, date])
+  @@map("content_suggestions")
+}
+
+model WeeklyInsight {
+  id                  String          @id @default(cuid())
+  userId              String
+  user                User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekStartDate       DateTime
+  insightText         String
+  topObservations     String[]
+  thingsToStop        String[]
+  contentIdea         String?
+  dataSnapshot        Json?
+  createdAt           DateTime        @default(now())
+
+  @@unique([userId, weekStartDate])
+  @@map("weekly_insights")
+}
+
+model UsageLog {
+  id                  String          @id @default(cuid())
+  userId              String
+  user                User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action              String
+  creditsUsed         Int             @default(0)
+  metadata            Json?
+  createdAt           DateTime        @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, action])
+  @@map("usage_logs")
+}
+
+model Subscription {
+  id                  String              @id @default(cuid())
+  userId              String
+  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planTier            PlanTier
+  billingCycle        BillingCycle
+  status              SubscriptionStatus  @default(active)
+  razorpayOrderId     String?
+  razorpayPaymentId   String?
+  razorpaySubId       String?
+  amountPaid          Int
+  currency            String              @default("INR")
+  gstAmount           Int?
+  startedAt           DateTime            @default(now())
+  expiresAt           DateTime?
+  cancelledAt         DateTime?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  @@index([userId, status])
+  @@index([razorpayOrderId])
+  @@map("subscriptions")
+}
+
+model ApiKey {
+  id                  String          @id @default(cuid())
+  userId              String
+  user                User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  keyHash             String          @unique
+  keyPrefix           String
+  name                String?
+  lastUsedAt          DateTime?
+  requestCount        Int             @default(0)
+  isActive            Boolean         @default(true)
+  expiresAt           DateTime?
+  createdAt           DateTime        @default(now())
+
+  @@index([userId])
+  @@index([keyHash])
+  @@map("api_keys")
+}
+
+model WebhookEndpoint {
+  id                  String          @id @default(cuid())
+  userId              String
+  user                User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  url                 String
+  secret              String
+  events              String[]
+  isActive            Boolean         @default(true)
+  failureCount        Int             @default(0)
+  lastTriggeredAt     DateTime?
+  lastStatusCode      Int?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  deliveryLogs        WebhookDeliveryLog[]
+
+  @@index([userId])
+  @@map("webhook_endpoints")
+}
+
+model WebhookDeliveryLog {
+  id                  String          @id @default(cuid())
+  webhookEndpointId   String
+  webhookEndpoint     WebhookEndpoint @relation(fields: [webhookEndpointId], references: [id], onDelete: Cascade)
+  event               String
+  payload             Json
+  responseStatus      Int?
+  responseBody        String?
+  attemptNumber       Int             @default(1)
+  success             Boolean         @default(false)
+  deliveredAt         DateTime?
+  createdAt           DateTime        @default(now())
+
+  @@index([webhookEndpointId])
+  @@map("webhook_delivery_logs")
+}
+
+model FestivalCalendar {
+  id                  String          @id @default(cuid())
+  name                String
+  nameMarathi         String?
+  nameHindi           String?
+  date                DateTime
+  year                Int
+  type                String
+  region              String          @default("all_india")
+  contentAngle        String?
+  suggestedTopics     String[]
+  urgencyDaysBefore   Int             @default(3)
+  createdAt           DateTime        @default(now())
+
+  @@unique([name, year])
+  @@index([date])
+  @@map("festival_calendar")
+}
+
+model NagpurLocality {
+  id                  String          @id @default(cuid())
+  name                String          @unique
+  zone                String?
+  connectedTo         String[]
+  schools             String[]
+  hospitals           String[]
+  malls               String[]
+  upcomingInfra       String[]
+  avgPlotPriceMin     Int?
+  avgPlotPriceMax     Int?
+  priceUnit           String          @default("per_sqft")
+  appreciationYoY     String?
+  distanceAirport     String?
+  distanceRailway     String?
+  distanceHighway     String?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  @@map("nagpur_localities")
+}
+
+model GenerationCache {
+  id                  String          @id @default(cuid())
+  userId              String
+  hash                String
+  result              Json
+  expiresAt           DateTime
+  createdAt           DateTime        @default(now())
+
+  @@unique([userId, hash])
+  @@index([expiresAt])
+  @@map("generation_cache")
+}
+
+model WhatsAppSequence {
+  id                  String                @id @default(cuid())
+  userId              String
+  user                User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name                String
+  description         String?
+  isActive            Boolean               @default(true)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  steps               WhatsAppSequenceStep[]
+
+  @@map("whatsapp_sequences")
+}
+
+model WhatsAppSequenceStep {
+  id                  String                @id @default(cuid())
+  sequenceId          String
+  sequence            WhatsAppSequence      @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  stepNumber          Int
+  delayDays           Int                   @default(0)
+  messageBody         String
+  assetId             String?               // Optional link to a generated asset
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+
+  @@map("whatsapp_sequence_steps")
+}
