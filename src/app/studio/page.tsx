@@ -65,9 +65,11 @@ export default function AgenticOrchestrator() {
 
   // ── Queue & Autonomous Runs ─────────────────────────────────────────
   const [tasks, setTasks] = useState<AgentTask[]>([]);
-  const [activeTab, setActiveTab] = useState<"chat" | "queue">("queue");
+  const [activeTab, setActiveTab] = useState<"chat" | "queue" | "history">("queue");
   const [newRunGoal, setNewRunGoal] = useState("");
   const [isStartingRun, setIsStartingRun] = useState(false);
+  const [proactiveSuggestion, setProactiveSuggestion] = useState("");
+  const [campaignLog, setCampaignLog] = useState<any[]>([]);
 
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
@@ -78,17 +80,24 @@ export default function AgenticOrchestrator() {
 
     const fetchData = async () => {
       try {
-        // Fetch Memory
+        // Fetch Memory (only init once)
         const memoryRes = await fetch("/api/studio/chat");
         if (memoryRes.ok) {
           const data = await memoryRes.json();
-          if (coreMemory === "") setCoreMemory(data.memory || "");
+          setCoreMemory((prev) => prev === "" ? (data.memory || "") : prev);
         }
         // Fetch background queue
         const tasksRes = await fetch("/api/studio/tasks");
         if (tasksRes.ok) {
           const tData = await tasksRes.json();
           setTasks(tData.tasks || []);
+        }
+        // Fetch proactive suggestion
+        const proRes = await fetch("/api/studio/proactive");
+        if (proRes.ok) {
+          const proData = await proRes.json();
+          if (proData.proactiveSuggestion) setProactiveSuggestion(proData.proactiveSuggestion);
+          if (proData.campaignLog) setCampaignLog(proData.campaignLog);
         }
       } catch (err) {
         console.error("Polling error:", err);
@@ -237,7 +246,16 @@ export default function AgenticOrchestrator() {
               }`}
             >
               <Zap className="w-4 h-4" />
-              Active Autonomous Tasks ({tasks.filter(t => t.status === "processing").length})
+              Live Tasks ({tasks.filter(t => t.status === "processing").length})
+            </button>
+            <button
+              onClick={() => setActiveTab("history")}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all ${
+                activeTab === "history" ? "bg-white text-indigo-700 shadow-sm" : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              <TrendingUp className="w-4 h-4" />
+              Campaign Log ({campaignLog.length})
             </button>
             <button
               onClick={() => setActiveTab("chat")}
@@ -253,6 +271,23 @@ export default function AgenticOrchestrator() {
           {/* ── QUEUE TAB ─────────────────────────────── */}
           {activeTab === "queue" && (
             <div className="space-y-6">
+
+              {/* Proactive Suggestion from Gravity Claw */}
+              {proactiveSuggestion && (
+                <div className="bg-gradient-to-r from-indigo-50 to-fuchsia-50 border border-indigo-100 p-5 rounded-[2rem] flex items-start gap-4">
+                  <Sparkles className="w-5 h-5 text-indigo-600 shrink-0 mt-1" />
+                  <div className="flex-1">
+                    <p className="text-[9px] font-black uppercase text-indigo-400 tracking-widest mb-1">Gravity Claw — Proactive Campaign Suggestion</p>
+                    <p className="text-sm font-semibold text-indigo-900">{proactiveSuggestion}</p>
+                    <button
+                      onClick={() => setNewRunGoal(proactiveSuggestion.substring(0, 120))}
+                      className="mt-3 text-xs font-black text-indigo-600 bg-white border border-indigo-200 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors"
+                    >
+                      Accept & Brief Team →
+                    </button>
+                  </div>
+                </div>
+              )}
               <div className="bg-white border-2 border-dashed border-indigo-200 p-6 rounded-[2.5rem] shadow-sm">
                 <h3 className="font-black text-gray-900 mb-2">Initialize New Run</h3>
                 <p className="text-xs font-medium text-gray-500 mb-4">
@@ -369,6 +404,44 @@ export default function AgenticOrchestrator() {
                   ))
                 )}
               </div>
+            </div>
+          )}
+
+          {/* ── HISTORY TAB ─────────────────────────────── */}
+          {activeTab === "history" && (
+            <div className="space-y-4">
+              {campaignLog.length === 0 ? (
+                <div className="text-center py-12">
+                  <TrendingUp className="w-16 h-16 text-gray-200 mx-auto mb-3" />
+                  <p className="text-gray-400 font-bold text-sm">No completed campaigns yet. Run your first campaign to build the performance log.</p>
+                </div>
+              ) : (
+                campaignLog.map((log: any, i: number) => (
+                  <div key={i} className="bg-white border border-gray-100 rounded-[2rem] p-5 shadow-sm">
+                    <div className="flex items-start justify-between gap-4 mb-3">
+                      <div>
+                        <p className="text-[9px] font-black uppercase text-gray-400 mb-1">{log.completedAt ? new Date(log.completedAt).toLocaleDateString() : 'Unknown date'}</p>
+                        <h4 className="font-black text-gray-900 text-sm">{log.goal}</h4>
+                      </div>
+                      <span className="bg-green-50 text-green-700 text-[9px] font-black uppercase px-2 py-1 rounded-full border border-green-100 shrink-0">Completed</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="bg-gray-50 rounded-xl p-3 text-center">
+                        <p className="text-[9px] font-black uppercase text-gray-400">Formats</p>
+                        <p className="font-bold text-gray-700 text-xs mt-1">{(log.formats || []).join(', ')}</p>
+                      </div>
+                      <div className="bg-gray-50 rounded-xl p-3 text-center">
+                        <p className="text-[9px] font-black uppercase text-gray-400">Dynamic Reroutes</p>
+                        <p className="font-bold text-gray-700 text-xs mt-1">{log.dynamicRedirects?.length || 0}</p>
+                      </div>
+                      <div className="bg-gray-50 rounded-xl p-3 text-center">
+                        <p className="text-[9px] font-black uppercase text-gray-400">QC Revision</p>
+                        <p className={`font-bold text-xs mt-1 ${log.needsRevision ? 'text-amber-600' : 'text-green-600'}`}>{log.needsRevision ? 'Yes (auto-fixed)' : 'Passed'}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           )}
 

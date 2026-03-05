@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { runAutonomousOrchestrator } from "@/lib/orchestrator-autonomous";
+import { runGravityClaw } from "@/lib/gravity-claw";
 
 export const runtime = "nodejs";
 
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     });
 
     // Run autonomously in background without waiting
-    runAutonomousOrchestrator(newBgTask.id).catch(console.error);
+    runGravityClaw(newBgTask.id).catch(console.error);
 
     return NextResponse.json({ success: true, taskId: newBgTask.id });
   } catch (err: any) {
