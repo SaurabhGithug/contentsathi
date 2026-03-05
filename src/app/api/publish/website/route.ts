@@ -35,7 +35,7 @@ export async function POST(req: Request) {
 
   try {
     const payload = {
-      source: "contentsaarthi",
+      source: "contentsathi",
       apiKey: connection.apiKey,
       title: postTitle,
       slug: slug || postTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-"),

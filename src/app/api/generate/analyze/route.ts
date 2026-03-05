@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
 import { analyzeContent } from "@/lib/quality-checker";
+import { sanitizeText } from "@/lib/sanitize";
 
 export async function POST(req: Request) {
   try {
-    const { content, platform, targetTone } = await req.json();
+    const body = await req.json();
+    const content = body.content ? sanitizeText(body.content, 5000) : undefined;
+    const platform = body.platform;
+    const targetTone = body.targetTone ? sanitizeText(body.targetTone, 100) : undefined;
+
 
     if (!content || !platform) {
       return NextResponse.json({ error: "Content and platform are required" }, { status: 400 });

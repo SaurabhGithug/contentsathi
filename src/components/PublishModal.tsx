@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { X, Send, AlertCircle, CheckCircle2, Loader2, Link as LinkIcon, Edit2, Globe } from "lucide-react";
+import toast from "react-hot-toast";
 
 interface PublishModalProps {
   post: {
@@ -92,6 +93,7 @@ export default function PublishModal({ post, onClose, onSuccess }: PublishModalP
       if (!res.ok) throw new Error(data.error || "Publish failed");
 
       setSuccess("Post published successfully!");
+      toast.success("Post saved! ✅");
       const liveUrl = data.platformPostUrl || data.postUrl || data.tweetUrl || data.url;
       if (liveUrl) {
         setPostUrl(liveUrl);
@@ -103,6 +105,7 @@ export default function PublishModal({ post, onClose, onSuccess }: PublishModalP
         setTimeout(onClose, 2500);
       }
     } catch (err: any) {
+      toast.error('Kuch toh gadbad hai — try again 🙏');
       setError(err.message || "An unexpected error occurred during publishing.");
     } finally {
       setPublishing(false);

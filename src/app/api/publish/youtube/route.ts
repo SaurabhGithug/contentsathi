@@ -8,7 +8,7 @@ export async function POST(req: Request) {
       const { userId, title, body, imageUrl } = bodyText;
       calendarItemId = bodyText.calendarItemId;
 
-    // YouTube Shorts through content-saarthi is primarily a script generation tool.
+    // YouTube Shorts through contentsathi is primarily a script generation tool.
     // Full automated video uploading would require OAuth via YouTube Data API + a rendered video file.
     // The current flow generates scripts that users record. 
     // We mock the "publish" action by simply marking it as active/published.

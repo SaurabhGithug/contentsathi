@@ -111,7 +111,8 @@ export async function GET() {
       todayRecommendation,
       upcomingPosts,
       socialAccounts: user.socialAccounts || [],
-      creditsBalance: user.creditsBalance
+      creditsBalance: user.creditsBalance,
+      onboardingCompleted: user.onboardingCompleted
     });
   } catch (error: any) {
     console.error("[DASHBOARD_STATS_ERROR]", error);

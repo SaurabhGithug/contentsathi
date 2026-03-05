@@ -1,9 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getToken } from "next-auth/jwt";
+import { rateLimit, RATE_LIMITS, rateLimitResponse } from "@/lib/rate-limiter";
 
 export async function POST(req: NextRequest) {
   try {
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    const userId = (token?.sub || token?.email || req.headers.get("x-forwarded-for") || "anonymous") as string;
+
+    // Rate Limit Check
+    const limiter = rateLimit(`generate:${userId}`, RATE_LIMITS.generate);
+    if (!limiter.success) {
+      return NextResponse.json(rateLimitResponse(limiter.retryAfter), { status: 429 });
+    }
+
     const body = await req.json();
     const { script, voiceStyle = "conversational" } = body;
 

@@ -40,6 +40,7 @@ import { cn } from "@/lib/utils";
 import ScheduleModal from "@/components/ScheduleModal";
 import PostCard from "@/components/PostCard";
 import RefreshModal from "@/components/RefreshModal";
+import EmptyState from "@/components/EmptyState";
 
 const PLATFORM_ICONS: Record<string, any> = {
   instagram: Instagram,
@@ -276,9 +277,12 @@ export default function CalendarPage() {
                         </button>
                     </div>
                 )) : (
-                    <div className="py-20 text-center">
-                        <CalendarIcon className="w-16 h-16 text-gray-100 mx-auto mb-4" />
-                        <p className="text-gray-400 font-bold">Your schedule is empty for this period.</p>
+                    <div className="py-12 max-w-2xl mx-auto">
+                        <EmptyState 
+                          type="calendar" 
+                          title="Your Calendar is Empty" 
+                          description="You have no content scheduled for this period. Time to generate a new batch of fresh posts." 
+                        />
                     </div>
                 )}
             </div>

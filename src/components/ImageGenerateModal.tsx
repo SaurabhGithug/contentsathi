@@ -9,6 +9,7 @@ import {
   AlertCircle,
   CheckCircle2,
 } from "lucide-react";
+import toast from "react-hot-toast";
 
 const STYLES = [
   {
@@ -97,7 +98,9 @@ export default function ImageGenerateModal({
       if (!res.ok) throw new Error(data.error || "Image generation failed");
       setImageUrl(data.imageUrl);
       setIsPlaceholder(data.isPlaceholder ?? false);
+      toast.success("Image generated! ✨");
     } catch (err: any) {
+      toast.error('Kuch toh gadbad hai — try again 🙏');
       setError(err.message || "Something went wrong.");
     } finally {
       setIsGenerating(false);
@@ -108,7 +111,7 @@ export default function ImageGenerateModal({
     if (!imageUrl) return;
     const link = document.createElement("a");
     link.href = imageUrl;
-    link.download = `content-saarthi-image-${Date.now()}.jpg`;
+    link.download = `contentsathi-image-${Date.now()}.jpg`;
     link.target = "_blank";
     link.click();
   };
@@ -122,7 +125,7 @@ export default function ImageGenerateModal({
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-in zoom-in-95 fade-in duration-200">
+      <div className="relative w-full h-full md:h-auto md:max-w-lg bg-white md:rounded-2xl shadow-2xl md:border border-gray-100 flex flex-col md:overflow-hidden overflow-y-auto animate-in zoom-in-95 fade-in duration-200">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-violet-50 to-indigo-50 flex items-center justify-between">
           <div className="flex items-center gap-3">

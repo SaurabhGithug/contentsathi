@@ -21,14 +21,18 @@ import {
   ChevronUp,
   Sparkles,
   RefreshCw,
-  Globe,
   Star,
-  ArrowRight
+  ArrowRight,
+  Languages,
+  Loader2,
+  BarChart2,
+  Globe
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ScheduleModal from "./ScheduleModal";
 import PublishModal from "./PublishModal";
 import RefreshModal from "./RefreshModal";
+import PerformancePredictor from "./PerformancePredictor";
 import { analyzeContent, QualityScore } from "@/lib/quality-checker";
 
 interface PostCardProps {
@@ -69,12 +73,15 @@ export default function PostCard({ post: initialPost, onRegenerate, onDelete, on
   const [showPublish, setShowPublish] = useState(false);
   const [showRefresh, setShowRefresh] = useState(false);
   const [showPrompt, setShowPrompt] = useState(false);
+  const [showPredictor, setShowPredictor] = useState(false);
   const [tempBody, setTempBody] = useState(post.body);
   const [tempTitle, setTempTitle] = useState(post.title || "");
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [hasWebsites, setHasWebsites] = useState(false);
   const [isGolden, setIsGolden] = useState(post.isGoldenExample || false);
   const [isUpdatingGolden, setIsUpdatingGolden] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [showTranslateMenu, setShowTranslateMenu] = useState(false);
   const [analysis, setAnalysis] = useState<QualityScore | null>(
     post.body ? analyzeContent(post.body, post.platform) : null
   );
@@ -102,6 +109,34 @@ export default function PostCard({ post: initialPost, onRegenerate, onDelete, on
       if (res.ok) setIsGolden(!isGolden);
     } catch {} finally {
       setIsUpdatingGolden(false);
+    }
+  };
+
+  const handleTranslate = async (lang: string) => {
+    setIsTranslating(true);
+    setShowTranslateMenu(false);
+    try {
+      const res = await fetch("/api/generate/translate-post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          originalText: post.body,
+          targetLanguage: lang,
+          platform: post.platform
+        })
+      });
+      if (!res.ok) throw new Error("Translation failed");
+      const data = await res.json();
+      if (data.translatedText) {
+        setTempBody(data.translatedText);
+        setPost({ ...post, body: data.translatedText });
+        setIsEditing(true); // Open in edit mode to review
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to translate post.");
+    } finally {
+      setIsTranslating(false);
     }
   };
 
@@ -133,7 +168,7 @@ export default function PostCard({ post: initialPost, onRegenerate, onDelete, on
   };
 
   return (
-    <div className="group relative bg-white border border-gray-100 rounded-3xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col h-full animate-in fade-in slide-in-from-bottom-4">
+    <div className="group relative bg-white border border-gray-100 rounded-3xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col min-h-[400px] animate-in fade-in slide-in-from-bottom-4">
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50 bg-gradient-to-r from-gray-50/50 to-transparent">
         <div className="flex items-center gap-3">
@@ -191,7 +226,7 @@ export default function PostCard({ post: initialPost, onRegenerate, onDelete, on
 
       {/* Analysis Breakdown */}
       {showAnalysis && analysis && (
-        <div className="px-5 py-4 bg-indigo-50/50 border-b border-indigo-100/50 animate-in slide-in-from-top-2 duration-300">
+        <div className="px-5 py-3 bg-indigo-50/50 border-b border-indigo-100/50 animate-in slide-in-from-top-2 duration-300 max-h-40 overflow-y-auto">
             <div className="flex items-center gap-2 mb-3">
                 <AlertCircle className="w-3.5 h-3.5 text-indigo-600" />
                 <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-700">Optimization Feedback</h4>
@@ -232,7 +267,7 @@ export default function PostCard({ post: initialPost, onRegenerate, onDelete, on
           </div>
         ) : (
           <div className="relative group/content">
-            <p className="text-sm leading-relaxed text-gray-700 font-medium whitespace-pre-wrap line-clamp-[8]">
+            <p className="text-sm leading-relaxed text-gray-700 font-medium whitespace-pre-wrap">
               {post.body}
             </p>
             <button 
@@ -277,17 +312,39 @@ export default function PostCard({ post: initialPost, onRegenerate, onDelete, on
       </div>
 
       {/* Footer Actions */}
-      <div className="mt-auto p-4 border-t border-gray-50 flex items-center justify-between bg-gray-50/30">
-        <div className="flex gap-1">
+      <div className="mt-auto p-4 border-t border-gray-50 flex flex-wrap items-center justify-between gap-4 bg-gray-50/30">
+        <div className="flex gap-1 relative flex-wrap">
           <button onClick={copyToClipboard} title="Copy Body" className="p-2.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all">
             <Copy className="w-4 h-4" />
           </button>
           <button onClick={() => setShowRefresh(true)} title="Refresh & Republish" className="p-2.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all">
             <RefreshCw className="w-4 h-4" />
           </button>
+          <button 
+            onClick={() => setShowTranslateMenu(!showTranslateMenu)} 
+            disabled={isTranslating}
+            title="Translate Post" 
+            className="p-2.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+          >
+            {isTranslating ? <Loader2 className="w-4 h-4 animate-spin text-indigo-600" /> : <Languages className="w-4 h-4" />}
+          </button>
+          
+          {showTranslateMenu && (
+            <div className="absolute bottom-full left-0 mb-2 w-32 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-20 animate-in fade-in slide-in-from-bottom-2">
+              {["English", "Hindi", "Marathi", "Hinglish"].map((lang) => (
+                <button 
+                  key={lang}
+                  onClick={() => handleTranslate(lang)}
+                  className="w-full text-left px-4 py-2 text-xs font-bold text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
+                >
+                  {lang}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {post.platformPostUrl && (
              <a 
                href={post.platformPostUrl} 
@@ -300,9 +357,9 @@ export default function PostCard({ post: initialPost, onRegenerate, onDelete, on
           )}
           <button 
             onClick={() => setShowSchedule(true)}
-            className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all border border-gray-100 bg-white shadow-sm"
+            className="flex items-center gap-1 md:gap-2 px-2 md:px-4 py-2.5 text-[10px] md:text-xs font-bold text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all border border-gray-100 bg-white shadow-sm"
           >
-            <Calendar className="w-4 h-4" /> Schedule
+            <Calendar className="w-3.5 h-3.5 md:w-4 md:h-4" /> Schedule
           </button>
           
           {hasWebsites && (
@@ -318,9 +375,17 @@ export default function PostCard({ post: initialPost, onRegenerate, onDelete, on
 
           <button 
             onClick={() => setShowPublish(true)}
-            className="flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition-all shadow-indigo-200 shadow-lg"
+            className="flex items-center gap-1 md:gap-2 px-3 md:px-5 py-2.5 text-[10px] md:text-xs font-bold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition-all shadow-indigo-200 shadow-lg"
           >
-            <Send className="w-4 h-4" /> Publish
+            <Send className="w-3.5 h-3.5 md:w-4 md:h-4" /> Publish
+          </button>
+
+          <button 
+            onClick={() => setShowPredictor(true)}
+            className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded-xl transition-all border border-purple-100 bg-white shadow-sm"
+            title="AI Performance Prediction"
+          >
+            <BarChart2 className="w-4 h-4" /> Predict
           </button>
         </div>
       </div>
@@ -353,6 +418,15 @@ export default function PostCard({ post: initialPost, onRegenerate, onDelete, on
              setShowRefresh(false);
              setIsEditing(true); // Open in edit mode to review before saving
           }}
+        />
+      )}
+      {showPredictor && (
+        <PerformancePredictor
+          postBody={post.body}
+          platform={post.platform}
+          language={(post as any).language}
+          postType={(post as any).type}
+          onClose={() => setShowPredictor(false)}
         />
       )}
     </div>

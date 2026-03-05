@@ -1,18 +1,14 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
+import { authOptions } from "@/lib/auth";
+import { rateLimit, RATE_LIMITS, rateLimitResponse } from "@/lib/rate-limiter";
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { platform, calendarItemId, title, body, imageUrl } = await req.json();
-
-    if (!platform || (!calendarItemId && !body)) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
     const user = await prisma.user.findUnique({
@@ -22,6 +18,14 @@ export async function POST(req: Request) {
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
+
+    // Rate Limit Check
+    const limiter = rateLimit(`publish:${user.id}`, RATE_LIMITS.publish);
+    if (!limiter.success) {
+      return NextResponse.json(rateLimitResponse(limiter.retryAfter), { status: 429 });
+    }
+
+    const { platform, calendarItemId, title, body, imageUrl } = await req.json();
 
     // Attempt to find the connected social account for this platform
     // Normalizing platform names (e.g. "YouTube Shorts" -> "youtube", "X (Twitter)" -> "twitter")

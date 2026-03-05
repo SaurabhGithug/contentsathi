@@ -4,32 +4,53 @@ import { prisma } from "@/lib/prisma";
 import { callGemini } from "@/lib/gemini";
 import { SYSTEM_PROMPT_BASE, buildWeekFromTopicPrompt } from "@/lib/prompts";
 import { authOptions } from "@/lib/auth";
+import { sanitizeText } from "@/lib/sanitize";
+import { rateLimit, RATE_LIMITS, rateLimitResponse } from "@/lib/rate-limiter";
+import { transcreateWithSarvam, isSarvamSupported } from "@/lib/sarvam";
 
 export async function POST(req: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.email || req.headers.get("x-forwarded-for") || "anonymous";
+    
+    // Rate Limit Check
+    const limiter = rateLimit(`generate:${userId}`, RATE_LIMITS.generate);
+    if (!limiter.success) {
+      return NextResponse.json(rateLimitResponse(limiter.retryAfter), { status: 429 });
+    }
+
     const body = await req.json();
-    const { topic, niche, audience, platforms, languages, primaryLanguage, researchContext } = body;
+    const { topic: rawTopic, niche: rawNiche, audience: rawAudience, platforms, languages, platformLanguages, primaryLanguage, researchContext: rawResearchContext } = body;
+
+    const topic = sanitizeText(rawTopic, 500);
+    const niche = rawNiche ? sanitizeText(rawNiche, 200) : undefined;
+    const audience = rawAudience ? sanitizeText(rawAudience, 500) : undefined;
+    const researchContext = rawResearchContext ? sanitizeText(rawResearchContext, 5000) : undefined;
 
     if (!topic) {
       return NextResponse.json({ error: "Topic is required" }, { status: 400 });
     }
 
     let brain: any = null;
-    let userId: string | null = null;
-    const session = await getServerSession(authOptions);
+    let dbUserId: string | null = null;
+    let transliterateRoman = false;
+
     if (session?.user?.email) {
       const user = await prisma.user.findUnique({ where: { email: session.user.email } });
       if (user) {
-        userId = user.id;
+        dbUserId = user.id;
         brain = await prisma.contentBrain.findUnique({ where: { userId: user.id } });
+        if (user.platformLangPrefs) {
+          transliterateRoman = (user.platformLangPrefs as any).transliterateRoman === true;
+        }
       }
     }
 
     // ── E9: Fetch golden examples to inject into Gemini prompt ──────────────
     let goldenExamples: string[] = [];
-    if (userId) {
+    if (dbUserId) {
       const goldens = await prisma.generatedAsset.findMany({
-        where: { userId, isGoldenExample: true },
+        where: { userId: dbUserId },
         take: 3,
         orderBy: { createdAt: "desc" },
         select: { body: true },
@@ -46,6 +67,7 @@ export async function POST(req: Request) {
       audience: audience || brain?.audienceDescription || "First-time buyers and investors in India",
       platforms: platforms || ["Instagram", "LinkedIn", "WhatsApp"],
       languages: languages || ["English", "Hinglish"],
+      platformLanguages: platformLanguages || undefined,
       primaryLanguage: primaryLanguage || brain?.primaryLanguage || "English",
       brandVoice: brain?.tone || undefined,
       ctaList: ctaList.length > 0 ? ctaList : undefined,
@@ -54,6 +76,7 @@ export async function POST(req: Request) {
         ? goldenExamples.join("\n\n---\n\n")
         : brain?.goldenExamples || undefined,
       researchContext: researchContext || undefined,
+      transliterateRoman,
     });
 
     const result = await callGemini(SYSTEM_PROMPT_BASE, userPrompt, {
@@ -61,10 +84,11 @@ export async function POST(req: Request) {
       languages: languages || ["English", "Hinglish"],
     });
 
-    // ── Generate Image Prompts for each post ──────────────────────────────
+    // ── Generate Image Prompts and handle Sarvam Transcreation ─────────────
     if (result.posts && result.posts.length > 0) {
       await Promise.all(
         result.posts.map(async (post: any) => {
+          // 1. Image Prompt (Gemini)
           try {
             const apiKey = process.env.GEMINI_API_KEY;
             if (apiKey && apiKey.startsWith("AIza")) {
@@ -87,14 +111,30 @@ export async function POST(req: Request) {
               }
             }
           } catch (e) {
-            console.error("Failed to generate image prompt for post", e);
+            console.error("Failed to generate image prompt", e);
+          }
+
+          // 2. Sarvam Transcreation (Only if supported regional language is requested)
+          const targetLang = post.language || primaryLanguage || "English";
+          if (isSarvamSupported(targetLang)) {
+            try {
+              const context = `Real estate social media post about ${topic}. Audience: ${audience || "Home buyers"}. Niche: ${niche || "Real Estate"}. Brand Voice: ${brain?.tone || "Professional"}.`;
+              const transcreatedBody = await transcreateWithSarvam(post.body, targetLang, context);
+              if (transcreatedBody && transcreatedBody !== post.body) {
+                post.body = transcreatedBody;
+                post.isTranscreated = true;
+                post.engine = "sarvam-m";
+              }
+            } catch (sarvamErr) {
+              console.error("[SARVAM_PIPELINE_ERROR]", sarvamErr);
+            }
           }
         })
       );
     }
 
     // ── E5: Auto-save each post to GeneratedAsset DB ─────────────────────
-    if (userId && result.posts && result.posts.length > 0) {
+    if (dbUserId && result.posts && result.posts.length > 0) {
       await Promise.allSettled(
         result.posts.map(async (post: any) => {
           try {
@@ -109,7 +149,7 @@ export async function POST(req: Request) {
             const lang = (post.language || primaryLanguage || "english").toLowerCase() as any;
             const saved = await prisma.generatedAsset.create({
               data: {
-                userId: userId!,
+                userId: dbUserId!,
                 type: "post",
                 platform,
                 language: lang,

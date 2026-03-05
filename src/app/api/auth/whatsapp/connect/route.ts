@@ -1,13 +1,20 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
+import { authOptions } from "@/lib/auth";
+import { rateLimit, RATE_LIMITS, rateLimitResponse } from "@/lib/rate-limiter";
+import { sanitizeText } from "@/lib/sanitize";
 
 // WhatsApp Business — Manual Token Save
 // POST body: { phoneNumberId, accessToken, businessAccountId, testNumber? }
 
 export async function POST(req: Request) {
-  const session = await getServerSession();
+  const session = await getServerSession(authOptions);
   if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Rate limit
+  const limiter = rateLimit(`wa_connect:${session.user.email}`, RATE_LIMITS.auth);
+  if (!limiter.success) return NextResponse.json(rateLimitResponse(limiter.retryAfter), { status: 429 });
 
   const body = await req.json();
   const { phoneNumberId, accessToken, businessAccountId, testNumber } = body;
@@ -72,7 +79,7 @@ export async function POST(req: Request) {
             messaging_product: "whatsapp",
             to: testNumber,
             type: "text",
-            text: { body: "✅ ContentSathi WhatsApp connected successfully!" },
+            text: { body: "✅ Contentsathi WhatsApp connected successfully!" },
           }),
         }
       );

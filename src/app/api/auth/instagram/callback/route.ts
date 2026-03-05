@@ -11,7 +11,8 @@ export async function GET(req: Request) {
   const error = searchParams.get("error");
 
   if (error || !code) {
-    return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/settings?tab=accounts&error=oauth_denied`);
+    const errorMsg = error === "access_denied" ? "oauth_denied" : "token_exchange_failed";
+    return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/settings?tab=accounts&error=${errorMsg}`);
   }
 
   const session = await getServerSession();
@@ -29,6 +30,7 @@ export async function GET(req: Request) {
   );
   const tokenData = await tokenRes.json();
   if (!tokenData.access_token) {
+    console.error("[Instagram OAuth] Token exchange failed:", tokenData);
     return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/settings?tab=accounts&error=token_exchange_failed`);
   }
 
@@ -72,7 +74,13 @@ export async function GET(req: Request) {
   const tokenExpiry = new Date(Date.now() + expiresIn * 1000);
 
   const { encryptToken } = require("@/lib/encryption");
-  const encryptedToken = encryptToken(accessToken);
+  let encryptedToken;
+  try {
+    encryptedToken = encryptToken(accessToken);
+  } catch (err) {
+    console.error("[Instagram OAuth] Encryption failed:", err);
+    return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/settings?tab=accounts&error=encryption_failed`);
+  }
 
   await (prisma.socialAccount as any).upsert({
     where: { userId_platform: { userId: user.id, platform: "instagram" } },

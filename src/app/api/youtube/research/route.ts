@@ -70,9 +70,9 @@ async function fetchVideoMeta(
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { topic, city, youtubeLink } = body as {
+    const { topic, advancedSearch, youtubeLink } = body as {
       topic?: string;
-      city?: string;
+      advancedSearch?: string;
       youtubeLink?: string;
     };
 
@@ -128,7 +128,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const query = [topic.trim(), city?.trim()].filter(Boolean).join(" ");
+    const query = [topic.trim(), advancedSearch?.trim()].filter(Boolean).join(" ");
     const videos = await searchYouTube(query, apiKey, 5);
 
     if (videos.length === 0) {

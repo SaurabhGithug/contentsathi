@@ -5,6 +5,8 @@ import { Search, Filter, Loader2, Layout, CalendarPlus, Copy, Send, CheckCircle2
 import PublishModal from "@/components/PublishModal";
 import ScheduleModal from "@/components/ScheduleModal";
 import RefreshModal from "@/components/RefreshModal";
+import EmptyState from "@/components/EmptyState";
+
 
 export default function LibraryTab() {
   const [assets, setAssets] = useState<any[]>([]);
@@ -261,14 +263,12 @@ export default function LibraryTab() {
             </div>
           </div>
         ) : assets.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-center">
-            <div className="max-w-sm">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <History className="w-8 h-8 text-gray-300" />
-              </div>
-              <h3 className="text-lg font-bold text-gray-900 mb-1">No content found</h3>
-              <p className="text-sm text-gray-500">Your generated output will automatically save here for future use.</p>
-            </div>
+          <div className="h-full flex items-center justify-center">
+            <EmptyState 
+              type="library" 
+              title="Your Library is Empty" 
+              description="Your generated output will automatically save here for future use once you create your first campaign." 
+            />
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-max" style={{ gridAutoRows: 'min-content' }}>

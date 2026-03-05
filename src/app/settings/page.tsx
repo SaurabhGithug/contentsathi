@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import toast from "react-hot-toast";
 import { 
   User, 
   Globe, 
@@ -24,8 +25,12 @@ import {
   MessageCircle,
   Clock,
   TrendingUp,
-  AlertCircle
+  AlertCircle,
+  Shield
 } from "lucide-react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Suspense } from "react";
+import { QRCodeCanvas } from "qrcode.react";
 
 const PLATFORM_ICONS: Record<string, any> = {
   instagram: Instagram,
@@ -36,11 +41,29 @@ const PLATFORM_ICONS: Record<string, any> = {
   whatsapp: MessageCircle,
 };
 
-export default function Settings() {
-  const [activeTab, setActiveTab] = useState("brand");
+function SettingsContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const tabParam = searchParams.get("tab");
+  
+  const [activeTab, setActiveTab] = useState(tabParam || "brand");
+
+  // Sync state with URL parameter if it changes via navigation
+  useEffect(() => {
+    if (tabParam && tabParam !== activeTab) {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam, activeTab]);
+
+  const handleTabChange = (newTab: string) => {
+    setActiveTab(newTab);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", newTab);
+    router.replace(`?${params.toString()}`, { scroll: false });
+  };
   
   // Brand Form State
-  const [brandName, setBrandName] = useState("ContentSaarthi Demo");
+  const [brandName, setBrandName] = useState("Contentsathi Demo");
   const [industry, setIndustry] = useState("Real Estate & Land Development");
   const [brandDesc, setBrandDesc] = useState("We are a premium land developer based in Nagpur focusing on high-appreciation residential plots near upcoming infrastructure.");
   const [audience, setAudience] = useState("Investors, first-time buyers, IT professionals looking for second homes.");
@@ -50,6 +73,7 @@ export default function Settings() {
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(["instagram", "linkedin", "whatsapp", "youtube"]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [transliterateRoman, setTransliterateRoman] = useState(false);
 
   // Profile
   const [profileName, setProfileName] = useState("");
@@ -71,12 +95,49 @@ export default function Settings() {
   const [newSiteWebhook, setNewSiteWebhook] = useState("");
   const [isAddingSite, setIsAddingSite] = useState(false);
 
+  // WhatsApp manual entry state
+  const [waPhoneNumberId, setWaPhoneNumberId] = useState("");
+  const [waAccessToken, setWaAccessToken] = useState("");
+  const [waBusinessId, setWaBusinessId] = useState("");
+  const [isConnectingWhatsApp, setIsConnectingWhatsApp] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [showQRModal, setShowQRModal] = useState(false);
+
   useEffect(() => {
+    // Handle OAuth callback parameters
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const success = params.get("success");
+      const error = params.get("error");
+      
+      if (success) {
+        toast.success(`Successfully connected ${success.charAt(0).toUpperCase() + success.slice(1)}! 🚀`);
+        window.history.replaceState({}, document.title, window.location.pathname + "?tab=accounts");
+      }
+      
+      if (error) {
+        const errorMessages: Record<string, string> = {
+          oauth_denied: "Permission was denied. Please try again.",
+          token_failed: "Failed to exchange tokens with the platform.",
+          user_not_found: "Session error. Please login again.",
+          encryption_failed: "Security error while saving tokens.",
+          invalid_state: "Security verification failed. Please try again.",
+          session_expired: "Session expired. Please try connecting again."
+        };
+        toast.error(errorMessages[error] || "An error occurred during connection.");
+        window.history.replaceState({}, document.title, window.location.pathname + "?tab=accounts");
+      }
+    }
+
     loadBrainData();
-    // Load user profile name
+    // Load user profile and transliteration preference W4
     fetch("/api/user/profile")
       .then(r => r.json())
-      .then(u => { if (u.name) setProfileName(u.name); })
+      .then(u => { 
+        if (u.id) setUserId(u.id);
+        if (u.name) setProfileName(u.name); 
+        if (u.platformLangPrefs?.transliterateRoman) setTransliterateRoman(true);
+      })
       .catch(() => {});
   }, []);
 
@@ -122,6 +183,13 @@ export default function Settings() {
         })
       });
       if (res.ok) {
+        // Also save transliteration setting W4
+        await fetch("/api/user/preferences", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ platformLangPrefs: { transliterateRoman } })
+        });
+        
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3000);
       }
@@ -215,12 +283,45 @@ export default function Settings() {
         setNewSiteName("");
         setNewSiteUrl("");
         setNewSiteWebhook("");
+        toast.success("Website block added! 🌐");
         fetchWebsites();
+      } else {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to add website");
       }
-    } catch (e) {
-      console.error(e);
+    } catch (err: any) {
+      toast.error(err.message || "Error adding website");
     } finally {
       setIsAddingSite(false);
+    }
+  };
+
+  const handleConnectWhatsApp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!waPhoneNumberId || !waAccessToken) return;
+    setIsConnectingWhatsApp(true);
+    try {
+      const res = await fetch("/api/auth/whatsapp/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          phoneNumberId: waPhoneNumberId, 
+          accessToken: waAccessToken,
+          businessAccountId: waBusinessId
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to connect WhatsApp");
+      
+      toast.success(`WhatsApp connected as ${data.displayName}! ✅`);
+      setWaPhoneNumberId("");
+      waAccessToken && setWaAccessToken("");
+      setWaBusinessId("");
+      fetchAccounts();
+    } catch (err: any) {
+      toast.error(err.message || "WhatsApp connection failed");
+    } finally {
+      setIsConnectingWhatsApp(false);
     }
   };
 
@@ -243,25 +344,15 @@ export default function Settings() {
     { id: "facebook", name: "Facebook Page", color: "text-blue-700", bg: "bg-blue-50" }
   ];
 
-  const handleLoadPreset = () => {
-    setBrandName("Saraswati Nagari");
-    setIndustry("Premium Residential Real Estate");
-    setBrandDesc("Saraswati Nagari by Sarthi Developers is a premium plotting project in Nagpur (Besa-Pipla Road). We offer clear-title, NMRDA-sanctioned plots with modern amenities like underground cabling, cement roads, and lush gardens.");
-    setAudience("IT professionals at MIHAN, families looking for a peaceful yet connected home, and long-term land investors in Nagpur.");
-    setTone("Professional, Trustworthy, and Visionary");
-    setPrimaryLang("Marathi");
-    setSecondaryLang("English");
-    setSelectedPlatforms(["instagram", "linkedin", "whatsapp", "facebook", "youtube"]);
-    alert("Saraswati Nagari Preset loaded! Click Save to apply.");
-  };
+
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-5xl mx-auto">
       
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Settings & Integrations</h1>
-        <p className="text-gray-500 mt-1">Configure your AI persona, social channels, and website hooks.</p>
+        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Settings &amp; Integrations</h1>
+        <p className="text-gray-500 mt-1">Configure your AI Content Partner persona, social channels, and workspace integrations.</p>
       </div>
 
       <div className="flex flex-col md:flex-row gap-8">
@@ -270,7 +361,7 @@ export default function Settings() {
         <aside className="w-full md:w-64 flex-shrink-0">
           <nav className="space-y-1">
             <button 
-              onClick={() => setActiveTab("brand")}
+              onClick={() => handleTabChange("brand")}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                 activeTab === "brand" ? "bg-indigo-50 text-indigo-700 shadow-sm" : "text-gray-600 hover:bg-gray-50"
               }`}
@@ -278,7 +369,7 @@ export default function Settings() {
               <Briefcase className="w-5 h-5" /> Brand & Niche
             </button>
             <button 
-              onClick={() => setActiveTab("languages")}
+              onClick={() => handleTabChange("languages")}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                 activeTab === "languages" ? "bg-indigo-50 text-indigo-700 shadow-sm" : "text-gray-600 hover:bg-gray-50"
               }`}
@@ -286,7 +377,7 @@ export default function Settings() {
               <Globe className="w-5 h-5" /> Languages & Tone
             </button>
             <button 
-              onClick={() => setActiveTab("accounts")}
+              onClick={() => handleTabChange("accounts")}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                 activeTab === "accounts" ? "bg-indigo-50 text-indigo-700 shadow-sm" : "text-gray-600 hover:bg-gray-50"
               }`}
@@ -294,7 +385,7 @@ export default function Settings() {
               <Share2 className="w-5 h-5" /> Connected Accounts
             </button>
             <button 
-              onClick={() => setActiveTab("profile")}
+              onClick={() => handleTabChange("profile")}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                 activeTab === "profile" ? "bg-indigo-50 text-indigo-700 shadow-sm" : "text-gray-600 hover:bg-gray-50"
               }`}
@@ -302,7 +393,7 @@ export default function Settings() {
               <User className="w-5 h-5" /> Profile
             </button>
             <button 
-              onClick={() => setActiveTab("websites")}
+              onClick={() => handleTabChange("websites")}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                 activeTab === "websites" ? "bg-indigo-50 text-indigo-700 shadow-sm" : "text-gray-600 hover:bg-gray-50"
               }`}
@@ -310,7 +401,7 @@ export default function Settings() {
               <LinkIcon className="w-5 h-5" /> Website Blocks
             </button>
             <button 
-              onClick={() => setActiveTab("examples")}
+              onClick={() => handleTabChange("examples")}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                 activeTab === "examples" ? "bg-amber-50 text-amber-700 shadow-sm" : "text-gray-600 hover:bg-gray-50"
               }`}
@@ -318,7 +409,7 @@ export default function Settings() {
               <Star className="w-5 h-5 text-amber-500" /> Golden Examples
             </button>
             <button 
-              onClick={() => setActiveTab("notifications")}
+              onClick={() => handleTabChange("notifications")}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                 activeTab === "notifications" ? "bg-indigo-50 text-indigo-700 shadow-sm" : "text-gray-600 hover:bg-gray-50"
               }`}
@@ -326,12 +417,20 @@ export default function Settings() {
               <AlertCircle className="w-5 h-5" /> Notifications
             </button>
             <button 
-              onClick={() => setActiveTab("billing")}
+              onClick={() => handleTabChange("billing")}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                 activeTab === "billing" ? "bg-indigo-50 text-indigo-700 shadow-sm" : "text-gray-600 hover:bg-gray-50"
               }`}
             >
-              <Zap className="w-5 h-5" /> Plan & Billing
+              <Zap className="w-5 h-5" /> Plan &amp; Billing
+            </button>
+            <button 
+              onClick={() => handleTabChange("ai-engine")}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                activeTab === "ai-engine" ? "bg-violet-50 text-violet-700 shadow-sm" : "text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              <TrendingUp className="w-5 h-5 text-violet-500" /> AI Engine
             </button>
           </nav>
         </aside>
@@ -348,13 +447,6 @@ export default function Settings() {
                   </div>
                   <h2 className="text-xl font-bold text-gray-900">Brand & Niche</h2>
                 </div>
-                <button 
-                  onClick={handleLoadPreset}
-                  className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
-                >
-                  <Star className="w-3.5 h-3.5 fill-emerald-600" />
-                  Load Saraswati Nagari Preset
-                </button>
               </div>
               
               <div className="space-y-6">
@@ -472,6 +564,24 @@ export default function Settings() {
                     ))}
                   </div>
                 </div>
+
+                <div className="pt-4 border-t border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-gray-900">Transliterate Roman to Devanagari</p>
+                      <p className="text-xs text-gray-500 font-medium">Automatically rewrite Hindi/Marathi text written in English script (e.g. &quot;kase aahat&quot;) into proper Devanagari script (&quot;कसे आहात&quot;).</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={transliterateRoman} 
+                        onChange={(e) => setTransliterateRoman(e.target.checked)} 
+                        className="sr-only peer" 
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                    </label>
+                  </div>
+                </div>
               </div>
 
               <div className="mt-8 pt-6 border-t border-gray-100 flex items-center justify-between">
@@ -574,28 +684,80 @@ export default function Settings() {
                             <div className="p-3 bg-green-600 text-white rounded-2xl shadow-lg">
                                 <MessageCircle className="w-6 h-6" />
                             </div>
-                            <div>
-                                <h3 className="text-xl font-black text-green-900 tracking-tight">WhatsApp Business API</h3>
-                                <p className="text-sm font-medium text-green-700">Enter your Meta Developer credentials manually.</p>
+                            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 w-full">
+                                <div>
+                                    <h3 className="text-xl font-black text-green-900 tracking-tight">WhatsApp Business API</h3>
+                                    <p className="text-sm font-medium text-green-700">Enter credentials or connect via QR code for easier setup.</p>
+                                </div>
+                                <button 
+                                    type="button"
+                                    onClick={() => setShowQRModal(true)}
+                                    className="flex items-center gap-2 px-6 py-2.5 bg-white text-green-600 border-2 border-green-200 rounded-2xl font-black text-sm hover:bg-green-100 hover:border-green-300 transition-all shadow-sm"
+                                >
+                                    <Zap className="w-4 h-4 fill-green-600" />
+                                    Connect via QR
+                                </button>
                             </div>
                         </div>
                         
-                        <form action="/api/auth/whatsapp/connect" method="POST" className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                        <form onSubmit={handleConnectWhatsApp} className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                           <div className="space-y-2">
                              <label className="block text-xs font-black text-green-800 uppercase tracking-widest ml-1">Phone Number ID</label>
-                             <input name="phoneNumberId" type="text" className="w-full px-5 py-3 border border-green-200 rounded-2xl text-sm bg-white/80 backdrop-blur-sm focus:ring-2 focus:ring-green-500 outline-none transition-all" placeholder="e.g. 10609..." required />
+                             <input 
+                               value={waPhoneNumberId}
+                               onChange={e => setWaPhoneNumberId(e.target.value)}
+                               type="text" 
+                               className="w-full px-5 py-3 border border-green-200 rounded-2xl text-sm bg-white/80 backdrop-blur-sm focus:ring-2 focus:ring-green-500 outline-none transition-all" 
+                               placeholder="e.g. 10609..." 
+                               required 
+                             />
                           </div>
                           <div className="space-y-2">
                              <label className="block text-xs font-black text-green-800 uppercase tracking-widest ml-1">Access Token</label>
-                             <input name="accessToken" type="password" className="w-full px-5 py-3 border border-green-200 rounded-2xl text-sm bg-white/80 backdrop-blur-sm focus:ring-2 focus:ring-green-500 outline-none transition-all" placeholder="EAAD..." required />
+                             <input 
+                               value={waAccessToken}
+                               onChange={e => setWaAccessToken(e.target.value)}
+                               type="password" 
+                               className="w-full px-5 py-3 border border-green-200 rounded-2xl text-sm bg-white/80 backdrop-blur-sm focus:ring-2 focus:ring-green-500 outline-none transition-all" 
+                               placeholder="EAAD..." 
+                               required 
+                             />
+                          </div>
+                          <div className="space-y-2 md:col-span-2">
+                             <label className="block text-xs font-black text-green-800 uppercase tracking-widest ml-1">Business Account ID (Optional)</label>
+                             <input 
+                               value={waBusinessId}
+                               onChange={e => setWaBusinessId(e.target.value)}
+                               type="text" 
+                               className="w-full px-5 py-3 border border-green-200 rounded-2xl text-sm bg-white/80 backdrop-blur-sm focus:ring-2 focus:ring-green-500 outline-none transition-all" 
+                               placeholder="e.g. 1045..." 
+                             />
                           </div>
                           <div className="md:col-span-2 flex justify-end">
-                              <button type="submit" className="px-8 py-3 bg-green-600 hover:bg-green-700 text-white text-sm font-black rounded-2xl transition-all shadow-xl shadow-green-200 flex items-center gap-2">
-                                <Save className="w-4 h-4" />
-                                Save WhatsApp Config
+                              <button 
+                                type="submit" 
+                                disabled={isConnectingWhatsApp || !waPhoneNumberId || !waAccessToken}
+                                className="px-8 py-3 bg-green-600 hover:bg-green-700 text-white text-sm font-black rounded-2xl transition-all shadow-xl shadow-green-200 flex items-center gap-2 disabled:opacity-50"
+                              >
+                                {isConnectingWhatsApp ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                {isConnectingWhatsApp ? "Connecting..." : "Save WhatsApp Config"}
                               </button>
                           </div>
                         </form>
+
+                        {/* Remote Control Note */}
+                        <div className="mt-8 bg-black/5 border border-green-200/50 rounded-2xl p-5 backdrop-blur-sm">
+                            <h4 className="text-[10px] font-black text-green-800 uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
+                                <Zap className="w-3 h-3 fill-green-600 text-green-600" /> AI Remote Control Active
+                            </h4>
+                            <p className="text-xs text-green-800/70 leading-relaxed font-medium">
+                                WhatsApp is configured as the <strong>Command Center</strong> for your AI Co-Founder. 
+                                <br/><br/>
+                                • <strong>Instructions Only:</strong> Incoming messages from your connected number trigger autonomous research and content creation.
+                                <br/>
+                                • <strong>Privacy First:</strong> Your leads/customers will NOT receive automated replies from the Orchestrator. The AI only follows YOUR commands.
+                            </p>
+                        </div>
                     </div>
                   </div>
                 </div>
@@ -897,8 +1059,174 @@ export default function Settings() {
           )}
 
 
+          {activeTab === "ai-engine" && (
+            <div className="p-8 animate-in fade-in slide-in-from-right-2">
+              <div className="flex items-center gap-3 mb-8">
+                <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center">
+                  <TrendingUp className="w-5 h-5 text-violet-600" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">AI Engine</h2>
+                  <p className="text-sm text-gray-500">How your AI Content Partner thinks and writes.</p>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                {/* Hybrid Engine Banner */}
+                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-violet-950 p-8 border border-indigo-800">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500 rounded-full mix-blend-screen filter blur-[80px] opacity-10 pointer-events-none" />
+                  <div className="relative z-10">
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 mb-5">
+                      <Zap className="w-3.5 h-3.5 text-indigo-300" />
+                      <span className="text-xs font-bold text-indigo-100 tracking-wider uppercase">Hybrid Intelligence Engine</span>
+                    </div>
+                    <p className="text-white/90 font-medium leading-relaxed max-w-2xl">
+                      Contentsathi uses a <strong className="text-white">dual-engine AI architecture</strong> — Gemini 2.5 for strategic reasoning, research, and quality review, and <strong className="text-white">Sarvam-M for native Indian language intelligence</strong> across all 10 languages. This is why content in Hindi, Marathi, Tamil, Telugu, Kannada, Malayalam, Bengali, Gujarati, Punjabi, and Odia feels genuinely native — not translated.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Two Engine Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="p-6 border border-blue-100 bg-blue-50/50 rounded-2xl">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="p-2.5 bg-blue-600 rounded-xl">
+                        <Zap className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-gray-900">Gemini 2.5 Flash</h3>
+                        <p className="text-xs text-gray-500">Strategic Reasoning Engine</p>
+                      </div>
+                    </div>
+                    <ul className="space-y-2 text-sm text-gray-600 font-medium">
+                      <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />Intent Analyzer — understands your goal</li>
+                      <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />Research Context Agent — local data</li>
+                      <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />Quality Reviewer — fixes hooks and CTAs</li>
+                      <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />English content writing across all platforms</li>
+                    </ul>
+                  </div>
+
+                  <div className="p-6 border border-violet-100 bg-violet-50/50 rounded-2xl">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="p-2.5 bg-violet-600 rounded-xl">
+                        <Globe className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-gray-900">Sarvam-M</h3>
+                        <p className="text-xs text-gray-500">India&apos;s Sovereign Language AI</p>
+                      </div>
+                    </div>
+                    <ul className="space-y-2 text-sm text-gray-600 font-medium">
+                      <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-violet-500 mt-0.5 shrink-0" />Native transcreation in 10 Indian languages</li>
+                      <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-violet-500 mt-0.5 shrink-0" />Dialect-aware (Nagpur Marathi, Hyderabadi Telugu...)</li>
+                      <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-violet-500 mt-0.5 shrink-0" />Culturally accurate idioms and CTAs</li>
+                      <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-violet-500 mt-0.5 shrink-0" />Free per token — no extra cost to you</li>
+                    </ul>
+                  </div>
+                </div>
+
+                {/* SARVAM API Key Setup */}
+                <div className="p-6 border border-amber-100 bg-amber-50/50 rounded-2xl">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+                    <div className="flex-1">
+                      <h4 className="font-bold text-amber-900 mb-1">Activate 10-Language Support</h4>
+                      <p className="text-sm text-amber-800 font-medium leading-relaxed mb-4">
+                        To enable native Indian language content generation, add your free <strong>SARVAM_API_KEY</strong> to your <code className="bg-amber-100 px-1 rounded">.env.local</code> file.
+                        Get your key for free at{" "}
+                        <a href="https://cloud.sarvam.ai" target="_blank" rel="noreferrer" className="underline font-bold hover:text-amber-900">cloud.sarvam.ai</a>.
+                      </p>
+                      <div className="bg-gray-900 rounded-xl p-4">
+                        <p className="text-emerald-400 text-xs font-mono mb-1"># .env.local</p>
+                        <code className="text-green-300 text-sm font-mono">SARVAM_API_KEY=your_key_here</code>
+                      </div>
+                      <p className="text-xs text-amber-700 mt-3 font-medium">
+                        <strong>Powered by Sarvam AI</strong> — India&apos;s sovereign AI for native Indian language intelligence.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+
         </div>
       </div>
+
+      {/* ── QR CODE MODAL ────────────────────────────────────── */}
+      {showQRModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300 relative">
+            
+            {/* Close Button */}
+            <button 
+              onClick={() => setShowQRModal(false)}
+              className="absolute top-6 right-6 w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 hover:text-black transition-all z-10"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="p-10 text-center">
+              <div className="w-20 h-20 bg-green-100 rounded-[2rem] flex items-center justify-center text-green-600 mx-auto mb-6 shadow-sm border border-green-200">
+                <MessageCircle className="w-10 h-10" />
+              </div>
+              <h3 className="text-2xl font-black text-gray-900 tracking-tight mb-2">Connect via QR</h3>
+              <p className="text-sm font-medium text-gray-500 leading-relaxed mb-8">
+                Scan the QR code below and hit <span className="text-green-600 font-bold">&quot;Send&quot;</span> on WhatsApp to instantly link your account to Contentsathi.
+              </p>
+
+              <div className="relative inline-block p-6 bg-white border-2 border-green-100 rounded-[2.5rem] shadow-xl shadow-green-100/50 mb-8">
+                <QRCodeCanvas 
+                  value={`https://wa.me/918793082163?text=Link_Account_${userId}`} 
+                  size={200}
+                  level="H"
+                  includeMargin={false}
+                />
+                <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
+                   <Zap className="w-32 h-32 text-green-600 rotate-12" />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-2xl border border-gray-100 text-left">
+                  <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-gray-400 font-bold border border-gray-100 shadow-sm shrink-0">1</div>
+                  <p className="text-xs font-bold text-gray-600">Scan code with any QR scanner or Camera.</p>
+                </div>
+                <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-2xl border border-gray-100 text-left">
+                  <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-gray-400 font-bold border border-gray-100 shadow-sm shrink-0">2</div>
+                  <p className="text-xs font-bold text-gray-600">Hit <span className="text-green-600">&quot;Send&quot;</span> on the auto-filled message.</p>
+                </div>
+              </div>
+
+              <div className="mt-8 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
+                <Shield className="w-3 h-3" /> Secure & Private
+              </div>
+            </div>
+
+            <div className="bg-gray-50 p-6 text-center border-t border-gray-100">
+               <button 
+                onClick={() => setShowQRModal(false)}
+                className="text-sm font-black text-indigo-600 hover:text-indigo-700"
+               >
+                 I&apos;ve sent the message. Done!
+               </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+export default function Settings() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-[400px] items-center justify-center">
+        <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+      </div>
+    }>
+      <SettingsContent />
+    </Suspense>
   );
 }

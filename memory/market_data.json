@@ -1,0 +1,98 @@
+{
+  "last_updated": "2026-03-05T11:53:26.045Z",
+  "corridors_tracked": [
+    "Wardha Road Nagpur",
+    "Besa Nagpur",
+    "Mihan Nagpur",
+    "Ring Road Nagpur",
+    "Hingna Road Nagpur"
+  ],
+  "scan_history": [
+    {
+      "timestamp": "2026-03-05T11:53:26.045Z",
+      "corridor": "MIHAN",
+      "gaps_found": [
+        "sustainability features",
+        "legal transparency in plot ownership"
+      ],
+      "battle_card_title": "Battle Card: RERA Trust vs Price War"
+    },
+    {
+      "timestamp": "2026-03-05T00:00:34.564Z",
+      "corridor": "MIHAN",
+      "gaps_found": [
+        "first-time buyer EMI calculators",
+        "stamp duty process explainers"
+      ],
+      "battle_card_title": "Battle Card: RERA Trust vs Price War"
+    },
+    {
+      "timestamp": "2026-03-04T23:59:30.057Z",
+      "corridor": "MIHAN",
+      "gaps_found": [
+        "first-time buyer EMI calculators",
+        "stamp duty process explainers"
+      ],
+      "battle_card_title": "Battle Card: RERA Trust vs Price War"
+    },
+    {
+      "timestamp": "2026-03-04T23:56:16.996Z",
+      "corridor": "MIHAN",
+      "gaps_found": [
+        "first-time buyer EMI calculators",
+        "stamp duty process explainers"
+      ],
+      "battle_card_title": "Battle Card: RERA Trust vs Price War"
+    }
+  ],
+  "competitor_profiles": {
+    "99acres": {
+      "last_scan": null,
+      "viral_threshold": 100,
+      "listings_found": 0
+    },
+    "magicbricks": {
+      "last_scan": null,
+      "viral_threshold": 50,
+      "listings_found": 0
+    }
+  },
+  "battle_cards_generated": [
+    {
+      "timestamp": "2026-03-04T23:56:16.996Z",
+      "title": "Battle Card: RERA Trust vs Price War",
+      "corridor": "MIHAN"
+    },
+    {
+      "timestamp": "2026-03-04T23:59:30.057Z",
+      "title": "Battle Card: RERA Trust vs Price War",
+      "corridor": "MIHAN"
+    },
+    {
+      "timestamp": "2026-03-05T00:00:34.564Z",
+      "title": "Battle Card: RERA Trust vs Price War",
+      "corridor": "MIHAN"
+    },
+    {
+      "timestamp": "2026-03-05T11:53:26.045Z",
+      "title": "Battle Card: RERA Trust vs Price War",
+      "corridor": "MIHAN"
+    }
+  ],
+  "performance_memory": {
+    "best_language_by_corridor": {
+      "Wardha Road": null,
+      "Besa": null,
+      "MIHAN": null,
+      "Ring Road": null
+    },
+    "best_format": null,
+    "avg_engagement_by_language": {
+      "Marathi": null,
+      "Hinglish": null,
+      "English": null,
+      "Hindi": null
+    },
+    "lessons_learned": []
+  }
+}

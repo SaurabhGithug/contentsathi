@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { pendingVerifiers } from "@/app/api/auth/x/connect/route";
+import { pendingVerifiers } from "@/lib/twitter-cache";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -9,7 +9,8 @@ export async function GET(req: Request) {
   const error = searchParams.get("error");
 
   if (error || !code || !state) {
-    return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/settings?tab=accounts&error=oauth_denied`);
+    const errorMsg = error === "access_denied" ? "oauth_denied" : "token_failed";
+    return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/settings?tab=accounts&error=${errorMsg}`);
   }
 
   const codeVerifier = pendingVerifiers.get(state);
@@ -45,6 +46,7 @@ export async function GET(req: Request) {
   const tokenData = await tokenRes.json();
 
   if (!tokenData.access_token) {
+    console.error("[X OAuth] Token exchange failed:", tokenData);
     return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/settings?tab=accounts&error=token_failed`);
   }
 

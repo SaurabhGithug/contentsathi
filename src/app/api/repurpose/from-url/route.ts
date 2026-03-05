@@ -1,16 +1,21 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { callGemini } from "@/lib/gemini";
 import { SYSTEM_PROMPT_BASE, buildRepurposeDetailedPrompt } from "@/lib/prompts";
 import { prisma } from "@/lib/prisma";
 import * as cheerio from "cheerio";
 import fetch from "node-fetch";
 import { extractVideoId, fetchTranscript } from "@/lib/youtube";
+import { sanitizeText } from "@/lib/sanitize";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { url, researchContext } = body;
+    const { url: rawUrl, researchContext: rawResearchContext } = body;
+
+    const url = rawUrl ? sanitizeText(rawUrl, 1000) : undefined;
+    const researchContext = rawResearchContext ? sanitizeText(rawResearchContext, 5000) : undefined;
 
     if (!url && !researchContext) {
       return NextResponse.json({ error: "Either a URL or YouTube research context is required" }, { status: 400 });
@@ -91,7 +96,7 @@ export async function POST(req: Request) {
     // 3. User Context & Gemini
     let brain: any = null;
     let userId: string | null = null;
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     if (session?.user?.email) {
       const user = await prisma.user.findUnique({ where: { email: session.user.email } });
       if (user) {

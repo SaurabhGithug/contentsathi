@@ -2,11 +2,27 @@
   "crons": [
     {
       "path": "/api/cron/publish-scheduled",
-      "schedule": "0 8 * * *"
+      "schedule": "0 6 * * *"
     },
     {
       "path": "/api/cron/fetch-analytics",
-      "schedule": "0 6 * * *"
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/analytics/weekly-insight",
+      "schedule": "30 2 * * 1"
+    },
+    {
+      "path": "/api/cron/reset-credits",
+      "schedule": "30 18 1 * *"
+    },
+    {
+      "path": "/api/cron/market-watch",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/self-improve",
+      "schedule": "0 3 * * 0"
     }
   ]
 }

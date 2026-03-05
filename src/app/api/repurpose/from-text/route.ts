@@ -4,11 +4,15 @@ import { callGemini } from "@/lib/gemini";
 import { SYSTEM_PROMPT_BASE, buildRepurposeDetailedPrompt } from "@/lib/prompts";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
+import { sanitizeText } from "@/lib/sanitize";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { rawText, researchContext } = body;
+    const { rawText: rawInput, researchContext: rawCtx } = body;
+
+    const rawText = rawInput ? sanitizeText(rawInput, 5000) : undefined;
+    const researchContext = rawCtx ? sanitizeText(rawCtx, 5000) : undefined;
 
     if (!rawText && !researchContext) {
       return NextResponse.json({ error: "Source text or research context is required" }, { status: 400 });
@@ -28,7 +32,7 @@ export async function POST(req: Request) {
     const ctaList = brain?.ctaList ? JSON.parse(brain.ctaList) : [];
 
     const userPrompt = buildRepurposeDetailedPrompt({
-      sourceContent: rawText,
+      sourceContent: rawText ?? researchContext ?? "",
       brandName: brain?.brandName || undefined,
       brandVoice: brain?.tone || undefined,
       niche: brain?.niche || undefined,

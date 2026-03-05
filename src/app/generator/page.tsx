@@ -1,18 +1,66 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Copy, CalendarPlus, RefreshCw, Zap, CheckCircle2,
-  ChevronDown, ChevronUp, Lightbulb, Layers, Video, BookOpen,
-  Youtube, Search, MapPin, AlertCircle, ExternalLink, X, FileText, Image as ImageIcon, Send
+  ChevronDown, ChevronUp, Lightbulb, Layers, Video, BookOpen, Info,
+  Youtube, Search, MapPin, AlertCircle, ExternalLink, X, FileText, Image as ImageIcon, Send, BookMarked, Megaphone
 } from "lucide-react";
+import toast from "react-hot-toast";
+import Link from "next/link";
 
 import PublishModal from "@/components/PublishModal";
 import ScheduleModal from "@/components/ScheduleModal";
 import PostCard from "@/components/PostCard";
 
 const PLATFORMS = ["Instagram", "LinkedIn", "YouTube Shorts", "WhatsApp", "X (Twitter)", "Facebook"];
-const LANGUAGES = ["English", "Hindi", "Marathi", "Hinglish"];
+
+const SMART_TOPIC_SUGGESTIONS = [
+  "Why investing in plots is smarter than buying flats in 2026",
+  "5 questions you must ask before buying any plot",
+  "How RERA changed real estate buying forever",
+  "Why Tier 2 cities are the best investment right now",
+  "The truth about property appreciation in India",
+  "How to spot a genuine real estate agent",
+  "Why weekend site visits lead to faster decisions",
+  "Top 3 mistakes first-time homebuyers make",
+  "How to negotiate the best property price",
+  "What vastu compliance actually means for buyers",
+  "Why NA plots are better than agricultural land",
+  "How Ring Road connectivity is changing property prices",
+  "What NRIs should know before buying property in India",
+  "Why festival season is the best time to buy property"
+];
+
+const SMART_AUDIENCE_SUGGESTIONS = [
+  "First-time Homebuyers",
+  "NRI Investors",
+  "High-Net-Worth Individuals",
+  "Working Families",
+  "Retirees & Seniors",
+  "Budget-Conscious Buyers",
+  "Business Owners",
+  "Luxury Seekers",
+  "Tech Professionals",
+  "Commercial Investors"
+];
+
+// All 11 supported languages with native script display names
+const ALL_LANGUAGES: { id: string; label: string; native: string; isIndic: boolean }[] = [
+  { id: "English",   label: "English",  native: "English",  isIndic: false },
+  { id: "Hindi",     label: "Hindi",    native: "\u0939\u093f\u0928\u094d\u0926\u0940",    isIndic: true  },
+  { id: "Marathi",   label: "Marathi",  native: "\u092e\u0930\u093e\u0920\u0940",  isIndic: true  },
+  { id: "Tamil",     label: "Tamil",    native: "\u0ba4\u0bae\u0bbf\u0bb4\u0bcd",    isIndic: true  },
+  { id: "Telugu",    label: "Telugu",   native: "\u0c24\u0c46\u0c32\u0c41\u0c17\u0c41",   isIndic: true  },
+  { id: "Kannada",   label: "Kannada",  native: "\u0c95\u0ca8\u0ccd\u0ca8\u0ca1",  isIndic: true  },
+  { id: "Malayalam", label: "Malayalam",native: "\u0d2e\u0d32\u0d2f\u0d3e\u0d33\u0d02",isIndic: true  },
+  { id: "Bengali",   label: "Bengali",  native: "\u09ac\u09be\u0982\u09b2\u09be",  isIndic: true  },
+  { id: "Gujarati",  label: "Gujarati", native: "\u0a97\u0ac1\u0a9c\u0ab0\u0abe\u0aa4\u0ac0", isIndic: true  },
+  { id: "Punjabi",   label: "Punjabi",  native: "\u0a2a\u0a70\u0a1c\u0a3e\u0a2c\u0a40",  isIndic: true  },
+  { id: "Odia",      label: "Odia",     native: "\u0b13\u0b21\u0bc8\u0b06",     isIndic: true  },
+];
+const LANGUAGES = ALL_LANGUAGES.map(l => l.id);
 
 // ── Helper: render tags from string or string[] ───────────────────────────
 function renderTags(tags: string[] | string | undefined) {
@@ -59,26 +107,41 @@ const PLATFORM_TO_BRAIN: Record<string, string[]> = {
   facebook: ["Facebook"],
 };
 
-export default function Generator() {
-  const [topic, setTopic] = useState("");
+function GeneratorInner() {
+  const searchParams = useSearchParams();
+  const topicFromUrl = searchParams.get('topic') || '';
+  const [topic, setTopic] = useState(topicFromUrl);
+  const topicRef = useRef<HTMLTextAreaElement>(null);
   const [audience, setAudience] = useState("First-time homebuyers, Investors");
+  const audienceRef = useRef<HTMLInputElement>(null);
   const [selectedPlatforms, setSelectedPlatforms] = useState(["Instagram", "LinkedIn", "WhatsApp", "YouTube Shorts"]);
-  const [selectedLanguages, setSelectedLanguages] = useState(["Hindi", "Marathi", "Hinglish"]);
+  const [selectedLanguages, setSelectedLanguages] = useState(["English", "Hindi", "Marathi"]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
   const [generatedPosts, setGeneratedPosts] = useState<any[]>([]);
   const [carouselOutline, setCarouselOutline] = useState<any[]>([]);
   const [shortsScript, setShortsScript] = useState<any>(null);
   const [blogOutline, setBlogOutline] = useState<any>(null);
-  const [postLanguages, setPostLanguages] = useState<Record<number, string>>({});
+  const [postLanguages, setPostLanguages] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [uploadingImageId, setUploadingImageId] = useState<string | null>(null);
   const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [userPlanTier, setUserPlanTier] = useState<string>("free");
+
+  // ── Workflow Agent State ──────────────────────────────────────────────────
+  const [workflowStep, setWorkflowStep] = useState<number>(0);
+  const [generationProgress, setGenerationProgress] = useState(0); 
+  const progressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [workflowLabel, setWorkflowLabel] = useState<string>("");
+  const [tone, setTone] = useState("Conversational");
+  const TONE_OPTIONS = ["Professional", "Conversational", "Story-based", "Urgent", "Educational", "Bold"];
+  const [cachedIntent, setCachedIntent] = useState<any>(null);
+  const [cachedResearch, setCachedResearch] = useState<any>(null);
 
   // ── YouTube Research State ─────────────────────────────────────────────
   const [youtubeResearchEnabled, setYoutubeResearchEnabled] = useState(false);
-  const [youtubeCity, setYoutubeCity] = useState("");
+  const [youtubeAdvancedSearch, setYoutubeAdvancedSearch] = useState("");
   const [youtubeLink, setYoutubeLink] = useState("");
   const [researchedVideos, setResearchedVideos] = useState<Array<{title:string;channel:string;videoId:string;url:string}>>([]);
   const [videosExpanded, setVideosExpanded] = useState(false);
@@ -93,16 +156,18 @@ export default function Generator() {
 
   // ── Handle Remix ID from query params ──────────────────────────────────
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const remixId = params.get("remixId");
-    if (remixId) {
+    const remixId = searchParams.get("remixId");
+
+    if (topicFromUrl) {
+      // Already set from useState initializer from URL, just ensure textarea reflects it
+      setTopic(topicFromUrl);
+    } else if (remixId) {
       const loadRemixAsset = async () => {
         try {
           const res = await fetch(`/api/generated-assets/${remixId}`);
           if (res.ok) {
             const asset = await res.json();
             setTopic(asset.body || asset.content || "");
-            // Trigger research if it's a URL or has meaningful context
             if (asset.body?.includes("http")) {
               setYoutubeLink(asset.body.match(/https?:\/\/[^\s]+/)?.[0] || "");
               setYoutubeResearchEnabled(true);
@@ -113,7 +178,12 @@ export default function Generator() {
         }
       };
       loadRemixAsset();
+    } else {
+      // Auto-suggestion on load if no topic provided
+      const random = SMART_TOPIC_SUGGESTIONS[Math.floor(Math.random() * SMART_TOPIC_SUGGESTIONS.length)];
+      setTopic(random);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Load Content Brain defaults on mount ───────────────────────────────
@@ -146,8 +216,27 @@ export default function Generator() {
         if (langs.length === 0) langs.push("Hinglish");
 
         if (platforms.length > 0) setSelectedPlatforms(platforms);
-        if (langs.length > 0) setSelectedLanguages(langs);
         if (brain.audienceDescription) setAudience(brain.audienceDescription);
+
+        // Also load platformLangPrefs and planTier
+        const prefRes = await fetch("/api/user/profile");
+        if (prefRes.ok) {
+          const userPrefs = await prefRes.json();
+          if (userPrefs.planTier) {
+            setUserPlanTier(userPrefs.planTier);
+          }
+          if (userPrefs.platformLangPrefs) {
+            setPostLanguages(userPrefs.platformLangPrefs);
+          } else {
+             // Fallback to brain defaults
+             const defaultLangMap: Record<string, string> = {};
+             platforms.forEach(p => {
+               defaultLangMap[p] = langs[0] || "English";
+             });
+             setPostLanguages(defaultLangMap);
+          }
+        }
+
       } catch {
         // Silently fail — defaults remain
       }
@@ -181,7 +270,7 @@ export default function Generator() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             topic,
-            city: youtubeCity.trim() || undefined,
+            advancedSearch: youtubeAdvancedSearch.trim() || undefined,
             youtubeLink: youtubeLink.trim() || undefined,
           }),
         });
@@ -208,65 +297,187 @@ export default function Generator() {
       }
     }
 
-    // ── Step 2: Generate Content ───────────────────────────────────────
+    // ── Step 2: Generate Content via Workflow Agent ──────────────────────
     setIsGenerating(true);
+    setWorkflowStep(1);
+    setGenerationProgress(5);
+    
+    const startTime = Date.now();
+    const updateStepProgress = () => {
+      const elapsed = (Date.now() - startTime) / 1000;
+      
+      if (elapsed < 4) {
+        setWorkflowStep(1);
+        setGenerationProgress(5 + (elapsed / 4) * 20);
+      } else if (elapsed < 10) {
+        setWorkflowStep(2);
+        setGenerationProgress(25 + ((elapsed - 4) / 6) * 25);
+      } else if (elapsed < 28) {
+        setWorkflowStep(3);
+        setGenerationProgress(50 + ((elapsed - 10) / 18) * 25);
+      } else if (elapsed < 34) {
+        setWorkflowStep(4);
+        setGenerationProgress(75 + ((elapsed - 28) / 6) * 20);
+      } else if (elapsed >= 34) {
+        setWorkflowStep(5); 
+        setGenerationProgress(100);
+      }
+      
+      if (elapsed < 36) {
+        progressTimerRef.current = setTimeout(updateStepProgress, 100);
+      }
+    };
+    updateStepProgress();
+
+    setWorkflowLabel("Starting AI Workflow Pipeline...");
 
     try {
-      const res = await fetch("/api/generate/week-from-topic", {
+      // Background save W5
+      fetch("/api/user/preferences", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ platformLangPrefs: postLanguages })
+      }).catch(console.error);
+
+      const res = await fetch("/api/generate/workflow", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           topic,
           audience,
+          tone,
           platforms: selectedPlatforms,
-          languages: selectedLanguages,
+          languages: selectedLanguages,           // NEW: all selected output languages
+          platformLanguages: postLanguages,
           primaryLanguage: selectedLanguages[0] || "English",
           researchContext: mergedTranscript,
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Generation failed");
-      setGeneratedPosts(data.posts || []);
-      setCarouselOutline(data.carouselOutline || []);
-      setShortsScript(data.shortsScript || null);
-      setBlogOutline(data.blogOutline || null);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: "Generation failed" }));
+        throw new Error(errorData.error || `Error ${res.status}`);
+      }
+
+      if (res.body) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let content = "";
+        
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          content += decoder.decode(value, { stream: true });
+          const lines = content.split("\n\n");
+          
+          content = lines.pop() || "";
+          
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(line.substring(6));
+                if (data.error) throw new Error(data.error);
+                
+                if (data.step) setWorkflowStep(data.step);
+                if (data.label) setWorkflowLabel(data.label);
+                
+                if (data.step === 6 && data.result) {
+                  setGeneratedPosts(data.result.posts || []);
+                  setCachedIntent(data.result.intentJson);
+                  setCachedResearch(data.result.researchJson);
+                  
+                  if (progressTimerRef.current) clearTimeout(progressTimerRef.current);
+                  setWorkflowStep(6);
+                  setGenerationProgress(100);
+                  
+                  // Keep isGenerating true for 1.5 seconds to show "Done!" message
+                  await new Promise(resolve => setTimeout(resolve, 1500));
+                  setIsGenerating(false);
+                  setWorkflowStep(0);
+                }
+              } catch (e: any) {
+                if (e.message && e.message !== "Unexpected end of JSON input") {
+                  throw e;
+                }
+              }
+            }
+          }
+        }
+      }
     } catch (err: any) {
       setError(err.message || "Something went wrong.");
     } finally {
       setIsGenerating(false);
+      setWorkflowStep(0);
+      setWorkflowLabel("");
     }
   };
 
   const handleCopy = (post: any) => {
     navigator.clipboard.writeText(post.body);
     setCopiedId(post.id);
+    toast.success("Copied to clipboard! 📋");
     setTimeout(() => setCopiedId(null), 1500);
   };
 
   const handleRegenerate = async (post: any, idx: number, overrideLang?: string) => {
-    const langToUse = overrideLang || postLanguages[idx] || post.language;
+    const langToUse = overrideLang || postLanguages[post.platform] || post.language;
     setRegeneratingId(post.id || String(idx));
     try {
-      const res = await fetch("/api/generate/week-from-topic", {
+      const res = await fetch("/api/generate/workflow", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          topic: `Write a ${post.type} for ${post.platform} in ${langToUse} about: ${topic}`,
+          topic,
           platforms: [post.platform],
           languages: [langToUse],
+          platformLanguages: { [post.platform]: langToUse },
           primaryLanguage: langToUse,
+          tone,
+          regeneratePlatform: post.platform,
+          regenerateLanguage: langToUse,
+          regenerate_single: true,
+          cachedIntent,
+          cachedResearch,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      if (data.posts?.[0]) {
-        setGeneratedPosts((prev) =>
-          prev.map((p, i) => (i === idx ? { ...p, ...data.posts[0], id: p.id } : p))
-        );
+      
+      if (!res.ok) throw new Error("Regenerate failed");
+
+      if (res.body) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let content = "";
+        
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          content += decoder.decode(value, { stream: true });
+          const lines = content.split("\n\n");
+          content = lines.pop() || "";
+          
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(line.substring(6));
+                if (data.error) throw new Error(data.error);
+                if (data.step === 6 && data.result?.posts?.[0]) {
+                  setGeneratedPosts((prev) =>
+                    prev.map((p, i) => (i === idx ? { ...p, ...data.result.posts[0], id: p.id } : p))
+                  );
+                  toast.success("Post regenerated ✨");
+                }
+              } catch (e: any) {
+                // Ignore incomplete JSON chunks
+              }
+            }
+          }
+        }
       }
     } catch (err: any) {
-      alert("Regenerate failed: " + (err.message || "Unknown error"));
+      toast.error(err.message || "Regenerate failed");
     } finally {
       setRegeneratingId(null);
     }
@@ -287,9 +498,9 @@ export default function Generator() {
           scheduledTime: "10:00 AM",
         }),
       });
-      alert(`"${post.title}" has been added to your calendar!`);
+      toast.success(`"${post.title}" has been added to your calendar! 📅`);
     } catch {
-      alert("Failed to schedule. Please try again.");
+      toast.error("Failed to schedule. Please try again.");
     }
   };
 
@@ -313,8 +524,9 @@ export default function Generator() {
       setGeneratedPosts(prev => prev.map((p, i) => 
         i === postIndex ? { ...p, imageUrl: data.publicUrl } : p
       ));
+      toast.success("Image uploaded! 📸");
     } catch (err: any) {
-      alert(err.message || "Failed to upload image. Please try again.");
+      toast.error(err.message || "Failed to upload image.");
     } finally {
       setUploadingImageId(null);
     }
@@ -341,34 +553,58 @@ export default function Generator() {
         i === idx ? { ...p, platformPostUrl: data.platformPostUrl } : p
       ));
       
-      alert(`Successfully published to ${post.platform}!`);
+      toast.success(`Successfully published to ${post.platform}! ✅`);
     } catch (err: any) {
-      alert(err.message || "Failed to publish. Please try again.");
+      toast.error(err.message || "Failed to publish.");
     } finally {
       setPublishingId(null);
     }
   };
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col md:flex-row gap-6 animate-in fade-in zoom-in-95 duration-500">
+    <div className="flex-1 flex flex-col md:flex-row gap-6 animate-in fade-in zoom-in-95 duration-500 lg:h-[calc(100vh-140px)] lg:overflow-hidden">
       
       {/* Left Pane - Inputs */}
-      <div className="w-full md:w-[400px] flex-shrink-0 bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col overflow-hidden">
-        <div className="p-5 border-b border-gray-100 bg-gray-50/50">
-          <h2 className="font-bold text-gray-900">Content Engine</h2>
-          <p className="text-xs text-gray-500 mt-1">One topic → One week of content</p>
+      <div className="w-full md:w-[400px] flex-shrink-0 bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col overflow-hidden lg:h-full">
+        <div className="p-5 border-b border-gray-100 bg-gradient-to-r from-indigo-50/80 to-violet-50/50">
+          <h2 className="font-black text-gray-900">Content Generator</h2>
+          <p className="text-xs text-indigo-600 mt-0.5 font-medium">Ek topic do — poora hafta ka content ready. Roz Dikhte Raho.</p>
         </div>
         
         <div className="flex-1 overflow-y-auto p-5 space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Topic or Idea *</label>
             <textarea 
+              ref={topicRef}
               rows={4}
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               placeholder="e.g. The impact of the new metro line on local property rates..."
               className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none transition-all resize-none text-sm"
             ></textarea>
+            <div className="flex items-center gap-4 mt-2 px-1">
+              <button 
+                onClick={() => {
+                  let next;
+                  do {
+                    next = SMART_TOPIC_SUGGESTIONS[Math.floor(Math.random() * SMART_TOPIC_SUGGESTIONS.length)];
+                  } while (next === topic);
+                  setTopic(next);
+                }}
+                className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 hover:underline transition-all"
+              >
+                Try another suggestion →
+              </button>
+              <button 
+                onClick={() => {
+                  setTopic("");
+                  topicRef.current?.focus();
+                }}
+                className="text-[11px] font-bold text-gray-400 hover:text-gray-600 hover:underline transition-all"
+              >
+                Clear and write my own →
+              </button>
+            </div>
           </div>
 
           {/* ── YouTube Research Toggle ─────────────────────────────── */}
@@ -387,7 +623,16 @@ export default function Generator() {
               }`}
             >
               <Youtube className={`w-4 h-4 flex-shrink-0 ${youtubeResearchEnabled ? "text-red-600" : "text-gray-400"}`} />
-              <span className="flex-1 text-left">🔍 Research top YouTube videos on this topic</span>
+              <div className="flex-1 text-left flex items-center gap-2">
+                <span>Research top YouTube videos on this topic</span>
+                <div className="group/tooltip relative">
+                  <Info className="w-3.5 h-3.5 text-gray-400 cursor-help" />
+                  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 p-2 bg-gray-900 text-white text-[10px] font-medium rounded-lg opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
+                    ContentSathi finds the top 5 YouTube videos on your topic, extracts key insights from their transcripts, and uses them to make your content more comprehensive and credible. Adds approximately 30 seconds to generation time.
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-gray-900"></div>
+                  </div>
+                </div>
+              </div>
               <span className={`w-9 h-5 rounded-full flex items-center transition-all flex-shrink-0 px-0.5 ${
                 youtubeResearchEnabled ? "bg-red-500 justify-end" : "bg-gray-300 justify-start"
               }`}>
@@ -399,14 +644,14 @@ export default function Generator() {
               <div className="p-4 space-y-3 bg-red-50/30">
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5 flex items-center gap-1.5">
-                    <MapPin className="w-3 h-3" /> Location or product name
+                    <Search className="w-3 h-3" /> Advanced Search Options
                     <span className="font-normal text-gray-400">(optional)</span>
                   </label>
                   <input
                     type="text"
-                    value={youtubeCity}
-                    onChange={(e) => setYoutubeCity(e.target.value)}
-                    placeholder='e.g. "Nagpur", "2BHK flats", "Saraswati Nagari"'
+                    value={youtubeAdvancedSearch}
+                    onChange={(e) => setYoutubeAdvancedSearch(e.target.value)}
+                    placeholder='e.g. Add specific keywords, filters, or competitor names...'
                     className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-red-400 focus:border-transparent outline-none text-sm bg-white"
                   />
                 </div>
@@ -496,19 +741,67 @@ export default function Generator() {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Target Audience</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700">Target Audience</label>
+              {audience !== "Auto (Let AI decide)" && audience.trim() !== "" && (
+                <button
+                  onClick={() => {
+                    setAudience("");
+                    audienceRef.current?.focus();
+                  }}
+                  className="text-[10px] font-bold text-gray-400 hover:text-gray-600"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
             <input 
+              ref={audienceRef}
               type="text" 
               value={audience}
               onChange={(e) => setAudience(e.target.value)}
+              placeholder="e.g. Young professionals in tech..."
               className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none transition-all text-sm"
             />
+            
+            <div className="flex overflow-x-auto gap-2 mt-3 pb-2 snap-x snap-mandatory hide-scrollbar" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              <style jsx>{`
+                .hide-scrollbar::-webkit-scrollbar {
+                  display: none;
+                }
+              `}</style>
+              <button
+                onClick={() => setAudience("Auto (Let AI decide)")}
+                className={`snap-start flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all border ${
+                  audience === "Auto (Let AI decide)"
+                    ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                    : "bg-indigo-50 text-indigo-700 border-indigo-100 hover:bg-indigo-100"
+                }`}
+              >
+                ✨ Auto
+              </button>
+              {SMART_AUDIENCE_SUGGESTIONS.map((suggestion, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setAudience(suggestion)}
+                  className={`snap-start flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all border ${
+                    audience === suggestion
+                      ? "bg-gray-800 text-white border-gray-800 shadow-sm"
+                      : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50 focus:ring-2 focus:ring-indigo-200"
+                  }`}
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Platforms</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700">Platforms</label>
+            </div>
             <div className="flex flex-wrap gap-2">
-              {PLATFORMS.map(p => (
+              {PLATFORMS.filter(p => userPlanTier !== "free" || p === "Instagram" || p === "WhatsApp").map(p => (
                 <button
                   key={p}
                   onClick={() => toggleItem(selectedPlatforms, p, setSelectedPlatforms)}
@@ -522,31 +815,85 @@ export default function Generator() {
                 </button>
               ))}
             </div>
+            {userPlanTier === "free" && (
+              <div className="mt-3 p-4 bg-gray-50 border border-gray-100 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+                <p className="text-xs text-gray-500 font-medium leading-relaxed">Unlock LinkedIn, YouTube Shorts, X and Facebook — upgrade to Sathi Pro at ₹999 per month</p>
+                <Link href="/billing" className="px-4 py-2 bg-indigo-600 text-white text-[10px] font-black rounded-lg hover:bg-indigo-700 transition-all whitespace-nowrap">
+                  Upgrade to Sathi Pro →
+                </Link>
+              </div>
+            )}
           </div>
 
+          {/* ── Language Selector ──────────────────────────── */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Languages</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Output Languages</label>
             <div className="flex flex-wrap gap-2">
-              {LANGUAGES.map(l => (
+              {ALL_LANGUAGES.filter(lang => userPlanTier !== "free" || ["English", "Hindi", "Marathi"].includes(lang.id)).map(lang => (
                 <button
-                  key={l}
-                  onClick={() => toggleItem(selectedLanguages, l, setSelectedLanguages)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                    selectedLanguages.includes(l)
-                      ? "bg-indigo-600 text-white border-indigo-600"
+                  key={lang.id}
+                  type="button"
+                  onClick={() => toggleItem(selectedLanguages, lang.id, setSelectedLanguages)}
+                  className={`flex flex-col items-center px-4 py-2.5 rounded-xl border text-center transition-all ${
+                    selectedLanguages.includes(lang.id)
+                      ? lang.isIndic
+                        ? "bg-violet-600 text-white border-violet-600 shadow-md"
+                        : "bg-indigo-600 text-white border-indigo-600 shadow-md"
                       : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
                   }`}
                 >
-                  {selectedLanguages.includes(l) && "✓ "}{l}
+                  <span className="text-[13px] font-bold leading-none">{lang.native}</span>
+                  <span className="text-[9px] mt-0.5 opacity-75 font-medium">{lang.label}</span>
                 </button>
               ))}
             </div>
+            {userPlanTier === "free" && (
+              <div className="mt-3 p-4 bg-gray-50 border border-gray-100 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+                <p className="text-xs text-gray-500 font-medium leading-relaxed">Unlock Tamil, Telugu, Kannada, Malayalam, Bengali, Gujarati, Punjabi and Odia — upgrade to Sathi Pro</p>
+                <Link href="/billing" className="px-4 py-2 bg-indigo-600 text-white text-[10px] font-black rounded-lg hover:bg-indigo-700 transition-all whitespace-nowrap">
+                  Upgrade to Sathi Pro →
+                </Link>
+              </div>
+            )}
+            <div className="mt-4 p-2 bg-violet-50 rounded-lg inline-flex items-center gap-2 border border-violet-100">
+              <span className="px-2 py-0.5 rounded bg-violet-600 text-[10px] font-black text-white uppercase tracking-wider">Powered by Sarvam AI</span>
+              <span className="text-[11px] text-violet-700 font-medium">India&apos;s sovereign AI for 10 Indian languages</span>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">How do you want to sound?</label>
+            <select
+              value={tone}
+              onChange={(e) => setTone(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-600 outline-none bg-white text-sm"
+            >
+              <option value="Professional">Professional & Formal</option>
+              <option value="Conversational">Friendly & Casual</option>
+              <option value="Story-based">Tell a Story</option>
+              <option value="Urgent">Create Urgency</option>
+              <option value="Educational">📚 Educational &amp; Informative</option>
+              <option value="Bold">💪 Bold &amp; Confident</option>
+            </select>
           </div>
         </div>
 
         {error && <div className="mx-5 mb-2 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">{error}</div>}
 
-        <div className="p-5 border-t border-gray-100 bg-white">
+        <div className="p-5 border-t border-gray-100 bg-white space-y-3">
+          {/* FIX 5: Credit warning ABOVE generate button */}
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
+            <Zap className="w-4 h-4 text-amber-600 shrink-0 mt-0.5 fill-current" />
+            <div>
+              <p className="text-xs font-bold text-amber-800">
+                This will use <span className="underline">{selectedPlatforms.length * selectedLanguages.length} credits</span> from your monthly allowance
+              </p>
+              <p className="text-[10px] text-amber-600 font-medium mt-0.5">
+                {selectedPlatforms.length} platform{selectedPlatforms.length > 1 ? 's' : ''} × {selectedLanguages.length} language{selectedLanguages.length > 1 ? 's' : ''} = {selectedPlatforms.length * selectedLanguages.length} posts generated
+              </p>
+            </div>
+          </div>
+
           <button 
             onClick={handleGenerate}
             disabled={isGenerating || isResearching}
@@ -559,37 +906,88 @@ export default function Generator() {
             ) : isGenerating ? (
               <><RefreshCw className="w-5 h-5 animate-spin" /> Generating AI Content...</>
             ) : (
-              <>{youtubeResearchEnabled ? <Search className="w-5 h-5" /> : <Zap className="w-5 h-5" />} {youtubeResearchEnabled ? "Research & Generate" : "Generate Campaign"}</>
+              <>{youtubeResearchEnabled ? <Search className="w-5 h-5" /> : <Zap className="w-5 h-5" />} {youtubeResearchEnabled ? "Research & Generate" : "Generate My Content"}</>
             )}
           </button>
           {youtubeResearchEnabled && !isGenerating && !isResearching && (
-            <p className="text-center text-[11px] text-gray-400 mt-2">Will search YouTube first, then generate AI content</p>
+            <p className="text-center text-[11px] text-gray-400">Will search YouTube first, then generate AI content</p>
           )}
         </div>
       </div>
 
       {/* Right Pane - Outputs */}
-      <div className="flex-1 bg-gray-50/50 rounded-3xl border border-gray-200 overflow-hidden flex flex-col shadow-inner">
+      <div className="flex-1 bg-gray-50/50 rounded-3xl border border-gray-200 overflow-hidden flex flex-col shadow-inner lg:h-full">
         {isGenerating ? (
-          <div className="flex-1 overflow-y-auto p-8 space-y-8">
-            <div className="flex items-center gap-3 mb-2 animate-pulse">
-                <div className="w-8 h-8 bg-gray-200 rounded-full" />
-                <div className="h-6 w-48 bg-gray-200 rounded-lg" />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {[1, 2, 3, 4].map(i => (
-                    <div key={i} className="h-[400px] bg-white rounded-3xl border border-gray-100 shadow-sm animate-pulse flex flex-col p-6 space-y-4">
-                        <div className="flex justify-between items-center">
-                            <div className="h-4 w-24 bg-gray-100 rounded-full" />
-                            <div className="h-8 w-8 bg-gray-100 rounded-full" />
-                        </div>
-                        <div className="h-4 w-full bg-gray-50 rounded-full" />
-                        <div className="h-4 w-5/6 bg-gray-50 rounded-full" />
-                        <div className="h-4 w-4/6 bg-gray-50 rounded-full" />
-                        <div className="flex-1 bg-gray-50 rounded-2xl" />
-                        <div className="h-10 w-full bg-gray-100 rounded-xl" />
+          <div className="flex-1 flex flex-col items-center justify-center p-8 bg-white">
+            <div className="w-full max-w-lg">
+              <h3 className="text-xl font-black text-gray-900 mb-8 flex items-center gap-3">
+                <Zap className="w-6 h-6 text-indigo-600 fill-indigo-600" />
+                Workflow Agent Progress
+              </h3>
+              
+              <div className="space-y-8 relative">
+                {/* Vertical line connector */}
+                <div className="absolute left-[15px] top-2 bottom-2 w-[2px] bg-gray-100 -z-0" />
+                
+                {[
+                  { id: 1, label: "Analyzing your content goal and audience" },
+                  { id: 2, label: "Researching market context and local insights" },
+                  { id: 3, label: "Writing platform-specific content in all languages" },
+                  { id: 4, label: "Quality checking and sharpening every post" }
+                ].map((step, idx) => {
+                  const isCompleted = workflowStep > step.id;
+                  const isActive = workflowStep === step.id;
+                  
+                  return (
+                    <div key={step.id} className="flex items-start gap-4 relative z-10">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border-2 transition-all duration-500 ${
+                        isCompleted ? "bg-green-500 border-green-500 text-white" : 
+                        isActive ? "bg-white border-indigo-600 text-indigo-600" : "bg-white border-gray-200 text-gray-400"
+                      }`}>
+                        {isCompleted ? (
+                          <CheckCircle2 className="w-5 h-5" />
+                        ) : isActive ? (
+                          <div className="relative w-full h-full flex items-center justify-center">
+                            <div className="absolute inset-0 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                            <div className="w-2 h-2 bg-indigo-600 rounded-full animate-pulse" />
+                          </div>
+                        ) : (
+                          <div className="w-2 h-2 bg-gray-200 rounded-full" />
+                        )}
+                      </div>
+                      
+                      <div className="pt-1">
+                        <p className={`text-sm font-bold transition-all duration-300 ${
+                          isCompleted ? "text-gray-900" : isActive ? "text-indigo-600 text-base" : "text-gray-400"
+                        }`}>
+                          {step.label}
+                        </p>
+                        {isActive && step.id === 3 && (
+                          <p className="text-[10px] text-indigo-400 font-medium mt-1 animate-pulse italic">
+                            Running in parallel for all platforms — this is the deep work.
+                          </p>
+                        )}
+                      </div>
                     </div>
-                ))}
+                  );
+                })}
+              </div>
+              
+              {/* Progress Bar Container */}
+              <div className="mt-12">
+                <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-indigo-600 transition-all duration-500 ease-out"
+                    style={{ width: `${generationProgress}%` }}
+                  />
+                </div>
+                <div className="flex justify-between mt-2">
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{Math.round(generationProgress)}% COMPLETE</span>
+                  {workflowStep >= 5 && (
+                    <span className="text-[11px] font-black text-green-600 animate-bounce">Roz Dikhte Raho</span>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         ) : generatedPosts.length === 0 ? (
@@ -597,35 +995,67 @@ export default function Generator() {
             <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-6 shadow-sm border border-gray-100">
               <Zap className="w-10 h-10 text-gray-200" />
             </div>
-            <h3 className="text-2xl font-black text-gray-300 mb-2">Awaiting Your Brilliance</h3>
-            <p className="text-gray-400 max-w-sm font-medium">Input your topic on the left and hit generate to see the magic happen.</p>
+            <h3 className="text-2xl font-black text-gray-300 mb-2">Your content will appear here</h3>
+            <p className="text-gray-400 max-w-md font-medium">Enter your topic and click Generate My Content. Your ContentSathi will have posts ready for all platforms in under 2 minutes.</p>
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto p-8 space-y-8 animate-in fade-in duration-500">
             <div className="flex items-center justify-between mb-2">
-              <h2 className="text-2xl font-black text-gray-900 flex items-center gap-3">
-                <div className="p-2 bg-green-50 rounded-xl text-green-600">
+              <div>
+                <h2 className="text-2xl font-black text-gray-900 flex items-center gap-3">
+                  <div className="p-2 bg-green-50 rounded-xl text-green-600">
                     <CheckCircle2 className="w-6 h-6" />
-                </div>
-                {generatedPosts.length} Masterpieces Ready
-              </h2>
+                  </div>
+                  {generatedPosts.length} Posts Ready
+                </h2>
+                <p className="text-xs text-indigo-600 font-bold mt-1 ml-14">Done! Your ContentSathi has prepared content across {new Set(generatedPosts.map(p => p.platform)).size} platform{new Set(generatedPosts.map(p => p.platform)).size > 1 ? 's' : ''} in {new Set(generatedPosts.map(p => p.language || "English")).size} language{new Set(generatedPosts.map(p => p.language || "English")).size > 1 ? 's' : ''}.</p>
+              </div>
             </div>
 
-            {/* Social Posts Grid */}
+            {/* Posts grid with language context badges */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {generatedPosts.map((post, idx) => (
+              {generatedPosts.map((post, idx) => {
+                // Determine which languages apply to this platform
+                const platformLangs = selectedLanguages.length > 0 ? selectedLanguages : [post.language || "English"];
+                return (
+                  <div key={post.id || idx} className="flex flex-col gap-2">
+                    {/* Language badge strip for this platform */}
+                    {platformLangs.length > 1 && (
+                      <div className="flex gap-1.5 flex-wrap">
+                        {platformLangs.map(lang => {
+                          const langInfo = ALL_LANGUAGES.find(l => l.id === lang);
+                          return (
+                            <span key={lang} className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                              lang === "English" ? "bg-indigo-50 text-indigo-600 border border-indigo-100" : "bg-violet-50 text-violet-700 border border-violet-100"
+                            }`}>
+                              {langInfo?.native || lang}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
                     <PostCard 
-                        key={post.id || idx}
-                        post={{
-                            ...post,
-                            qualityScore: post.qualityScore || 85 + (idx % 2 === 0 ? 3 : -2)
-                        }}
-                        onRegenerate={() => handleRegenerate(post, idx)}
-                        onUpdate={(updated) => {
-                            setGeneratedPosts(prev => prev.map((p, i) => i === idx ? updated : p));
-                        }}
+                      post={{
+                        ...post,
+                        qualityScore: post.qualityScore || 85 + (idx % 2 === 0 ? 3 : -2)
+                      }}
+                      onRegenerate={() => handleRegenerate(post, idx)}
+                      onUpdate={(updated) => {
+                        setGeneratedPosts(prev => prev.map((p, i) => i === idx ? updated : p));
+                      }}
                     />
-                ))}
+                    {/* Regenerate This Platform button */}
+                    <button
+                      onClick={() => handleRegenerate(post, idx)}
+                      disabled={!!regeneratingId}
+                      className="w-full py-2 text-xs font-bold text-indigo-600 hover:text-white hover:bg-indigo-600 border border-indigo-200 hover:border-indigo-600 rounded-xl transition-all flex items-center justify-center gap-2 bg-indigo-50/50"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${regeneratingId === (post.id || String(idx)) ? 'animate-spin' : ''}`} />
+                      Regenerate {post.platform}
+                    </button>
+                  </div>
+                );
+              })}
             </div>
 
 
@@ -747,5 +1177,20 @@ export default function Generator() {
         />
       )}
     </div>
+  );
+}
+
+export default function Generator() {
+  return (
+    <Suspense fallback={
+      <div className="flex-1 flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-50 animate-pulse" />
+          <div className="h-4 w-48 bg-gray-100 rounded-full animate-pulse" />
+        </div>
+      </div>
+    }>
+      <GeneratorInner />
+    </Suspense>
   );
 }

@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { sanitizeText } from "@/lib/sanitize";
+import { rateLimit, RATE_LIMITS, rateLimitResponse } from "@/lib/rate-limiter";
 
 const FEATURE_FLAG_ENABLED = process.env.ENABLE_IMAGE_GENERATION !== "false";
 
@@ -86,11 +90,27 @@ function getPlaceholderImage(style: string, seed?: number): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { prompt, style = "realistic" } = body;
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.email || req.headers.get("x-forwarded-for") || "anonymous";
 
-    if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
+    // Rate Limit Check
+    const limiter = rateLimit(`generate:${userId}`, RATE_LIMITS.generate);
+    if (!limiter.success) {
+      return NextResponse.json(rateLimitResponse(limiter.retryAfter), { status: 429 });
+    }
+
+    const body = await req.json();
+    const { prompt: rawPrompt, style = "realistic" } = body;
+
+    if (!rawPrompt || typeof rawPrompt !== "string" || !rawPrompt.trim()) {
       return NextResponse.json({ error: "Prompt is required." }, { status: 400 });
+    }
+
+    let prompt = "";
+    try {
+      prompt = sanitizeText(rawPrompt, 1000);
+    } catch (e: any) {
+      return NextResponse.json({ error: e.message }, { status: 400 });
     }
 
     const validStyles = ["realistic", "flat", "bold"];

@@ -1,17 +1,29 @@
 // ──────────────────────────────────────────────────────────────────────────
-// Contentsathi - AI Prompt Templates (v2 — High Quality)
+// ContentSathi - AI Prompt Templates (v3 — High Quality)
 // ──────────────────────────────────────────────────────────────────────────
 
 // ── Expert System Prompt ─────────────────────────────────────────────────
 
 export const SYSTEM_PROMPT_BASE = `
-You are an expert Indian content strategist and copywriter who specializes in creating high-converting social media content for solopreneurs, real estate developers, and small business owners in India. You understand Indian audiences deeply — their buying psychology, trust signals, cultural references, and language preferences including Marathi, Hindi, English, and Hinglish. You write content that feels human, warm, and credible — never robotic or salesy. You understand what hooks attention on Instagram Reels, what performs on LinkedIn for Indian professionals, and what converts on WhatsApp broadcasts for real estate buyers.
+You are ContentSathi, an expert content strategist for Indian real estate professionals, especially those working in Tier-2 cities like Nagpur, Pune, and Mumbai. Your content is persuasive, culturally relevant, and uses local references. Always write in a conversational tone that builds trust.
+
+For real estate content: mention specific benefits like RERA compliance, vastu, connectivity, investment returns, BHK configurations, carpet area, and locality names. Use price anchoring (₹ per sqft comparisons) and urgency naturally.
+
+For Hindi/Marathi content: use natural spoken language, not formal/bookish. Marathi should sound like Nagpur or Pune locals speak, not like a news bulletin. Hindi should be modern conversational, not formal Shuddh Hindi.
+
+Avoid generic phrases like "in today's world", "as we all know", "needless to say", "in conclusion", or "I'm happy to share". These are weak openers that kill engagement.
+
+Every piece of content MUST have:
+1. A strong HOOK in the first line (max 10 words — surprising fact, bold question, or relatable pain point)
+2. VALUE in the middle (specific, credible details — not vague promises)
+3. A clear, specific CTA at the end (not just "Contact us" — say exactly what to do)
 
 Core rules you ALWAYS follow:
 - Never create political, hateful, misleading, or illegal content.
 - Always use ₹ for Indian currency.
 - ALWAYS output valid JSON only — no extra text, no markdown fences, no explanation outside the JSON.
 `.trim();
+
 
 // ── Shared content quality rules injected into every user prompt ──────────
 
@@ -36,11 +48,23 @@ Target ~120 words total. Write exact words to say, not outlines.
 - Include price anchoring where relevant ("At ₹X per sqft, this is the last affordable option before rates jump")
 - End with urgency: limited plots, RERA deadline, or price revision date
 
-**Marathi content**: Use conversational Marathi spoken in Nagpur or Pune. Avoid Sanskrit-heavy or bookish words. Write as you'd speak.
+**Marathi content**: 
+- Use conversational, warm Marathi spoken in Nagpur or Pune (e.g., using "tumhi" instead of "aapan" for friendly professional tone). 
+- Avoid pure Sanskrit-heavy or news-reader words like "Prakalp" (use "Project" instead) or "Guntavnuk" (use "Investment"). 
+- Marathi hook rule: Start with a relatable question like "Nagpur madhe plot ghyaycha vichar kartay?" (Thinking of buying a plot in Nagpur?)
+- End with clear CTAs: "Aajch samparka sadha" or "Adhik mahiti sathi call kara".
 
-**Hindi content**: Use simple, friendly, modern Bollywood-style Hindi mixed with English terms for clarity. E.g., "Yaar, suno — property prices badhne wale hain."
+**Hindi content**: 
+- Use simple, friendly, modern conversational Hindi mixed naturally with English terms (like "Investment", "Location", "Returns", "Family") for clarity.
+- Hindi hook rule: Start with a direct pain point or aspiration. E.g., "Kya aap bhi ek perfect ghar ki talash mein hain?" or "Real estate mein invest karne ka sahi waqt kab hai?"
+- Do not use overly formal Hindi (avoid "Prastut hai", use "Pesh hai" or "Lekar aaye hain").
 
-**Hinglish content**: Mix naturally — key facts, prices, and CTAs in English; emotional and conversational parts in Hindi/Marathi.
+**Hinglish content**: 
+- Mix naturally like a casual WhatsApp chat between friends or a modern Instagram Reel.
+- Key facts, prices, features, and CTAs should be strictly in English.
+- Emotional, conversational, and storytelling parts in Hindi/Marathi.
+- Hook rule: Mashup of Hindi emotion + English fact. E.g., "Tired of paying high rent? Ab apna ghar lene ka sapna sach karein."
+- Never write entire sentences in pure English followed by entire sentences in Hindi. Blend them within the same sentence.
 `.trim();
 
 // ── Shared output schema description ─────────────────────────────────────
@@ -85,7 +109,8 @@ export function buildWeekFromTopicPrompt(params: {
   niche: string;
   audience: string;
   platforms: string[];
-  languages: string[];
+  languages?: string[];
+  platformLanguages?: Record<string, string>;
   primaryLanguage: string;
   languageMixRule?: string;
   brandName?: string;
@@ -94,12 +119,13 @@ export function buildWeekFromTopicPrompt(params: {
   contactInfo?: string;
   goldenExamples?: string;
   researchContext?: string;
+  transliterateRoman?: boolean;
 }) {
   const {
-    topic, niche, audience, platforms, languages,
+    topic, niche, audience, platforms, languages, platformLanguages,
     primaryLanguage, languageMixRule, brandName,
     brandVoice, ctaList, contactInfo, goldenExamples,
-    researchContext,
+    researchContext, transliterateRoman,
   } = params;
 
   return `
@@ -116,7 +142,7 @@ Generate a full week (7 posts minimum) of high-quality, high-converting social m
 ## Content Brief
 - Topic / Idea: ${topic}
 - Platforms: ${platforms.join(", ")}
-- Languages: ${languages.join(", ")}
+${platformLanguages ? `- Platform Languages: ${Object.entries(platformLanguages).map(([p, l]) => `${p}: ${l}`).join(", ")}` : `- Languages: ${languages?.join(", ")}`}
 - Primary Language: ${primaryLanguage}
 - Language Mix Rule: ${languageMixRule || "Match the platform and audience naturally"}
 
@@ -128,8 +154,10 @@ The following are insights from the top-performing YouTube videos about this top
 ${researchContext}
 ` : ""}
 ${CONTENT_QUALITY_RULES}
+${transliterateRoman ? "\n**IMPORTANT TRANSLITERATION RULE**: You MUST output all Hindi and Marathi content strictly in the native Devanagari script (e.g., 'कसे आहात' or 'नमस्ते'). Do NOT use the Roman/English alphabet for Hindi or Marathi text." : ""}
 
-Generate at least 7 posts. Cover all selected platforms. Generate at least one post per language where relevant.
+Generate at least 7 posts. Cover all selected platforms.
+${platformLanguages ? "IMPORTANT: strictly follow the exact language requested for each specific platform as listed in 'Platform Languages'. Do not use any other language for a platform." : "Generate at least one post per language where relevant."}
 Include 5-slide carouselOutline for Instagram, a full shortsScript for YouTube, and a blogOutline.
 
 ${OUTPUT_SCHEMA}
@@ -162,19 +190,47 @@ You are repurposing the provided source content into a comprehensive, high-conve
 ${sourceContent}
 
 ## Your Task
-Create the following from the source content:
-1. **Instagram Caption** — Hinglish. Hook first (max 10 words). Emojis. Tags.
-2. **LinkedIn Post** — Professional English. First-person opening. Short paragraphs. Insight-driven.
-3. **WhatsApp Broadcast** — Natural conversational Hindi or Marathi. End with "Reply INTERESTED" or a specific contact CTA.
-4. **YouTube Shorts Script** — Full verbatim script in Hinglish. Hook → Problem → Solution → CTA structure.
-5. **Instagram Carousel Outline** — 5 slides with headline, body text, and visual suggestion per slide.
-6. **Blog Outline** — SEO-optimized title + 4-5 section titles.
+Produce posts for ALL of the following combinations. Each must be unique, platform-native, and language-accurate:
+
+**Instagram Captions (3 posts)**
+- 1 in English: strong hook, emojis, hashtags, CTA
+- 1 in Hindi (Devanagari): hook + value + CTA, conversational tone
+- 1 in Marathi (Devanagari): warm, Nagpur/Pune spoken Marathi
+
+**LinkedIn Posts (3 posts)**
+- 1 in English: first-person insight, short paragraphs, professional
+- 1 in Hindi: modern conversational Hindi, professional tone
+- 1 in Marathi: professional Marathi, short paragraphs
+
+**WhatsApp Broadcasts (3 posts)**
+- 1 in English: friendly, trust-building, ends with "Reply YES to learn more"
+- 1 in Hindi: conversational like a message from a trusted friend, ends with "INTERESTED likhein"
+- 1 in Marathi: warm Marathi, ends with "INTERESTED pathva" or "Aajch samparka sadha"
+
+**X (Twitter) Threads (3 posts)**
+- 1 in English: punchy opener, 3-tweet thread concept
+- 1 in Hindi: viral-worthy hook, concise
+- 1 in Marathi: short, punchy
+
+**Facebook Posts (3 posts)**
+- 1 in English: community-focused, longer text, relatable story
+- 1 in Hindi: emotional storytelling angle
+- 1 in Marathi: community connection angle
+
+**YouTube Shorts Script (1 full script)**
+- Language: Hinglish (Hindi + English blend)
+- Structure: Hook (0-3s) → Problem (3-10s) → Solution (10-45s) → CTA (45-60s)
+- ~120 words total, every word scripted
+
+**Instagram Carousel Outline (5 slides)**
+- Each slide: headline, bodyText, visualSuggestion
 
 ${CONTENT_QUALITY_RULES}
 
 ${OUTPUT_SCHEMA}
 `.trim();
 }
+
 
 // ── Repurpose-Source Template (Basic) ────────────────────────────────────
 

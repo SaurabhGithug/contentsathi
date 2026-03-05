@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const body = await req.json();
-    const { notifyOnPublish, notifyOnFailure, notifyWeeklyDigest, notifyWhatsappNumber } = body;
+    const { notifyOnPublish, notifyOnFailure, notifyWeeklyDigest, notifyWhatsappNumber, platformLangPrefs } = body;
 
     const updatedUser = await (prisma.user as any).update({
       where: { id: user.id },
@@ -20,6 +20,9 @@ export async function POST(req: Request) {
         notifyOnFailure: notifyOnFailure ?? (user as any).notifyOnFailure,
         notifyWeeklyDigest: notifyWeeklyDigest ?? (user as any).notifyWeeklyDigest,
         notifyWhatsappNumber: notifyWhatsappNumber ?? (user as any).notifyWhatsappNumber,
+        platformLangPrefs: platformLangPrefs !== undefined 
+          ? { ...(((user as any).platformLangPrefs as object) || {}), ...platformLangPrefs } 
+          : (user as any).platformLangPrefs,
       }
     });
 

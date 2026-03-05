@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { callGemini } from "@/lib/gemini";
 import { SYSTEM_PROMPT_BASE, buildRepurposeSourcePrompt } from "@/lib/prompts";
+import { sanitizeText } from "@/lib/sanitize";
+import { transcreateWithSarvam, isSarvamSupported } from "@/lib/sarvam";
 
 import { YoutubeTranscript } from "youtube-transcript";
 
@@ -10,23 +12,24 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { sourceType, rawContent, sourceUrl, platforms, languages, primaryLanguage, generateBlog, generateScript } = body;
 
-    let actualContent = rawContent;
+    let actualContent = rawContent ? sanitizeText(rawContent, 5000) : undefined;
 
-    if (!rawContent && !sourceUrl) {
+    if (!actualContent && !sourceUrl) {
       return NextResponse.json({ error: "Source content or URL is required" }, { status: 400 });
     }
 
     if (sourceType === "url" && sourceUrl) {
-      if (sourceUrl.includes("youtube.com") || sourceUrl.includes("youtu.be")) {
+      const sanitizedUrl = sanitizeText(sourceUrl, 1000);
+      if (sanitizedUrl.includes("youtube.com") || sanitizedUrl.includes("youtu.be")) {
         try {
-          const transcript = await YoutubeTranscript.fetchTranscript(sourceUrl);
+          const transcript = await YoutubeTranscript.fetchTranscript(sanitizedUrl);
           actualContent = transcript.map(t => t.text).join(" ");
         } catch (e) {
           console.error("[YT_TRANSCRIPT_ERROR]", e);
           return NextResponse.json({ error: "Could not fetch YouTube transcript. Ensure the video has captions enabled." }, { status: 400 });
         }
       } else {
-        actualContent = sourceUrl;
+        actualContent = sanitizedUrl;
       }
     }
 
@@ -43,7 +46,7 @@ export async function POST(req: Request) {
     const ctaList = brain?.ctaList ? JSON.parse(brain.ctaList) : [];
 
     const userPrompt = buildRepurposeSourcePrompt({
-      sourceContent: actualContent,
+      sourceContent: actualContent ?? "",
       platforms: platforms || ["Instagram", "LinkedIn"],
       languages: languages || ["English", "Hinglish"],
       primaryLanguage: primaryLanguage || brain?.primaryLanguage || "English",
@@ -56,6 +59,28 @@ export async function POST(req: Request) {
     });
 
     const result = await callGemini(SYSTEM_PROMPT_BASE, userPrompt, { platforms, languages });
+
+    // ── Sarvam Transcreation ─────────────────────────────────────────────
+    if (result.posts && result.posts.length > 0) {
+      await Promise.all(
+        result.posts.map(async (post: any) => {
+          const targetLang = post.language || primaryLanguage || "English";
+          if (isSarvamSupported(targetLang)) {
+            try {
+              const context = `Repurposed content from ${sourceType}. Brand Voice: ${brain?.tone || "Professional"}. Niche: ${brain?.niche || "Real Estate"}.`;
+              const transcreatedBody = await transcreateWithSarvam(post.body, targetLang, context);
+              if (transcreatedBody && transcreatedBody !== post.body) {
+                post.body = transcreatedBody;
+                post.isTranscreated = true;
+                post.engine = "sarvam-m";
+              }
+            } catch (err) {
+              console.error("[SARVAM_REPURPOSE_ERROR]", err);
+            }
+          }
+        })
+      );
+    }
 
     return NextResponse.json({ posts: result.posts });
   } catch (error) {

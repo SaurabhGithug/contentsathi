@@ -24,6 +24,10 @@ import {
 import Link from "next/link";
 import { format } from "date-fns";
 import PostCard from "@/components/PostCard";
+import OnboardingWizard from "@/components/onboarding/OnboardingWizard";
+import EmptyState from "@/components/EmptyState";
+import toast from "react-hot-toast";
+
 
 interface SocialAccount {
   platform: string;
@@ -44,6 +48,7 @@ interface DashboardStats {
     status: string;
   }>;
   socialAccounts: SocialAccount[];
+  onboardingCompleted: boolean;
 }
 
 const PLATFORM_ICONS: Record<string, any> = {
@@ -59,12 +64,65 @@ function cn(...inputs: any[]) {
     return inputs.filter(Boolean).join(" ");
 }
 
+const SMART_TOPIC_SUGGESTIONS = [
+  "Why investing in plots is smarter than buying flats in 2026",
+  "5 questions you must ask before buying any plot",
+  "How RERA changed real estate buying forever",
+  "Why Tier 2 cities are the best investment right now",
+  "The truth about property appreciation in India",
+  "How to spot a genuine real estate agent",
+  "Why weekend site visits lead to faster decisions",
+  "Top 3 mistakes first-time homebuyers make",
+  "How to negotiate the best property price",
+  "What vastu compliance actually means for buyers",
+  "Why NA plots are better than agricultural land",
+  "How Ring Road connectivity is changing property prices",
+  "What NRIs should know before buying property in India",
+  "Why festival season is the best time to buy property"
+];
+
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [todayPosts, setTodayPosts] = useState<any[]>([]);
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [waitlistEmail, setWaitlistEmail] = useState("");
+  const [waitlistError, setWaitlistError] = useState("");
+  const [waitlistLoading, setWaitlistLoading] = useState(false);
+  const [waitlistSuccess, setWaitlistSuccess] = useState(false);
+  const [planTier, setPlanTier] = useState("free");
+  
+  const FREE_PLATFORMS = ["Instagram", "WhatsApp"];
+  
+  const handleWaitlistSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setWaitlistError("");
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!waitlistEmail || !emailRegex.test(waitlistEmail)) {
+        setWaitlistError("Sahi email daalo! e.g. sachin@gmail.com");
+        return;
+    }
+    setWaitlistLoading(true);
+    try {
+        const res = await fetch("/api/waitlist", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: waitlistEmail })
+        });
+        if (res.ok) {
+            setWaitlistSuccess(true);
+            toast.success("You're on the waitlist! 🚀");
+            setWaitlistEmail("");
+        } else {
+            toast.error("Failed to join waitlist. Please try again.");
+        }
+    } catch {
+        toast.error("Something went wrong");
+    } finally {
+        setWaitlistLoading(false);
+    }
+  };
 
   useEffect(() => {
     async function loadDashboard() {
@@ -84,6 +142,13 @@ export default function Dashboard() {
         setStats(statsData);
         setTodayPosts(todayData);
         setSuggestions(suggData);
+
+        // Load user's plan to filter suggestions
+        const profileRes = await fetch("/api/user/profile");
+        if (profileRes.ok) {
+          const profile = await profileRes.json();
+          setPlanTier(profile.planTier || "free");
+        }
       } catch {
         setError("Could not load dashboard data.");
       } finally {
@@ -98,6 +163,10 @@ export default function Dashboard() {
   return (
     <div className="max-w-7xl mx-auto space-y-10 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
       
+      {!loading && stats && !stats.onboardingCompleted && (
+        <OnboardingWizard onComplete={() => setStats({...stats, onboardingCompleted: true})} />
+      )}
+
       {/* ── Connected Accounts Bar ────────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/50 backdrop-blur-md border border-gray-100 p-4 rounded-3xl shadow-sm">
         <div className="flex items-center gap-4 border-r border-gray-100 pr-6 mr-2">
@@ -135,8 +204,14 @@ export default function Dashboard() {
 
         <div className="flex items-center gap-4 ml-auto">
             <div className="text-right">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Credits Left</p>
-                <p className="text-sm font-black text-indigo-600">{stats?.creditsBalance ?? 0}</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Posts Remaining This Month</p>
+                <p className="text-sm font-black text-indigo-600">
+                  {stats?.creditsBalance != null 
+                    ? stats.creditsBalance > 10000 
+                      ? "Unlimited" 
+                      : Math.max(0, Math.floor(stats.creditsBalance / 5)).toLocaleString()
+                    : "30"}
+                </p>
             </div>
             <Link href="/billing" className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100">
                 <Plus className="w-4 h-4" />
@@ -144,11 +219,14 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── Welcome Header ─────────────────────────────────────────────── */}
+      {/* ── Welcome Header ───────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <h1 className="text-4xl font-black text-gray-900 tracking-tight">Vibrant Morning, Saurabh!</h1>
-          <p className="text-gray-500 mt-2 font-medium">Your Content Pipeline for Saraswati Nagari is looking strong.</p>
+          <div className="flex items-center gap-3 mb-2">
+            <h1 className="text-4xl font-black text-gray-900 tracking-tight">Namaskar, Saurabh!</h1>
+          </div>
+          <p className="text-gray-500 font-medium">Your ContentSathi has your content pipeline ready.</p>
+          <p className="text-xs text-indigo-500 font-semibold mt-1" title="Sathi means Partner. Always by your side.">✦ Sathi (साथी) means Partner. Always by your side.</p>
         </div>
         <Link
           href="/generator"
@@ -166,7 +244,12 @@ export default function Dashboard() {
           <div className="space-y-1">
             <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Active Pipeline</p>
             <h3 className="text-4xl font-black text-gray-900">{stats?.postsPlanned ?? 0}</h3>
-            <p className="text-[10px] font-bold text-green-500 bg-green-50 px-2 py-0.5 rounded-full inline-block">+12% from last week</p>
+            {/* FIX 2: Only show % badge when there is actual data */}
+            {(stats?.postsPlanned ?? 0) > 0 ? (
+              <p className="text-[10px] font-bold text-green-500 bg-green-50 px-2 py-0.5 rounded-full inline-block">+12% from last week</p>
+            ) : (
+              <p className="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full inline-block">Aapka pehla post generate karo! 🚀</p>
+            )}
           </div>
           <div className="w-16 h-16 rounded-3xl bg-indigo-50 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
             <CalendarCheck className="w-8 h-8" />
@@ -184,19 +267,38 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="relative bg-gradient-to-br from-indigo-600 to-purple-700 p-8 rounded-[2.5rem] shadow-2xl shadow-indigo-200 text-white flex flex-col justify-between overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform duration-700">
+        <div className="relative bg-gradient-to-br from-indigo-600 to-purple-700 p-6 md:p-8 rounded-[2.5rem] shadow-2xl shadow-indigo-200 text-white flex flex-col justify-between overflow-hidden group">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform duration-700 pointer-events-none">
             <Sparkles className="w-32 h-32" />
           </div>
-          <div className="relative z-10">
-            <p className="text-white/70 text-xs font-black uppercase tracking-widest mb-3">Today&apos;s Strategy</p>
-            <h3 className="text-lg font-bold leading-tight" style={{ textWrap: 'balance' }}>
-              {stats?.todayRecommendation?.title ?? "Time to fill your calendar with fresh real estate insights!"}
+          <div className="relative z-10 flex-1">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-white/70 text-xs font-black uppercase tracking-widest">Today&apos;s suggested topic:</span>
+            </div>
+            <h3 className="text-lg font-bold leading-tight line-clamp-3 mb-2" style={{ textWrap: 'balance' }}>
+              {SMART_TOPIC_SUGGESTIONS[Math.floor(Math.random() * SMART_TOPIC_SUGGESTIONS.length)]}
             </h3>
+            {suggestions?.[0]?.description && (
+              <p className="text-sm text-indigo-100 line-clamp-2">
+                {suggestions[0].description}
+              </p>
+            )}
           </div>
-          <Link href="/calendar" className="relative z-10 inline-flex items-center gap-2 text-sm font-black mt-6 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl transition-all w-fit">
-            Explore Calendar <ArrowRight className="w-4 h-4" />
-          </Link>
+
+          <div className="relative z-10 mt-6 flex flex-col gap-2">
+            <Link 
+              href={`/generator?topic=${encodeURIComponent(suggestions?.[0]?.topic || "")}&platform=${suggestions?.[0]?.platform || "Instagram"}`}
+              className="inline-flex items-center justify-center gap-2 text-sm font-black bg-white text-indigo-700 hover:bg-indigo-50 px-4 py-3 rounded-xl transition-all shadow-lg hover:-translate-y-0.5"
+            >
+              Use this topic <Zap className="w-4 h-4 fill-current" />
+            </Link>
+            <Link 
+              href="/generator" 
+              className="inline-flex items-center justify-center gap-2 text-xs font-bold text-white/80 hover:text-white bg-white/10 hover:bg-white/20 px-4 py-2.5 rounded-xl transition-all"
+            >
+              Enter your own topic <span className="opacity-60">→</span>
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -215,7 +317,9 @@ export default function Dashboard() {
                     <div key={i} className="h-44 bg-gray-50 rounded-[2.5rem] animate-pulse border border-gray-100" />
                 ))
             ) : suggestions.length > 0 ? (
-                suggestions.map((s) => (
+                suggestions
+                  .filter(s => planTier !== "free" || FREE_PLATFORMS.includes(s.platform))
+                  .map((s) => (
                     <div key={s.id} className="group relative bg-white border border-gray-100 p-8 rounded-[2.5rem] shadow-sm hover:shadow-2xl transition-all hover:border-indigo-100 overflow-hidden">
                         <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
                             {s.type === 'festival' ? <Plus className="w-24 h-24" /> : <Zap className="w-24 h-24" />}
@@ -246,8 +350,12 @@ export default function Dashboard() {
                     </div>
                 ))
             ) : (
-                <div className="md:col-span-3 bg-gray-50 rounded-[2.5rem] p-10 text-center border border-dashed border-gray-200">
-                    <p className="text-gray-400 font-bold">No fresh suggestions right now. Keep generating content!</p>
+                <div className="md:col-span-3">
+                    <EmptyState 
+                      type="dashboard" 
+                      title="No Fresh AI Suggestions" 
+                      description="Our AI needs more context to generate strategy recommendations. Start by creating a few campaigns." 
+                    />
                 </div>
             )}
         </div>
@@ -289,55 +397,132 @@ export default function Dashboard() {
                 ))}
             </div>
         ) : (
-            <div className="bg-white/40 border-2 border-dashed border-gray-200 rounded-[3rem] p-16 text-center group hover:border-indigo-200 transition-all">
-                <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                    <Clock className="w-8 h-8 text-gray-300" />
-                </div>
-                <p className="text-gray-400 font-bold">No posts scheduled for today yet.</p>
-                <Link href="/generator" className="mt-4 inline-flex items-center gap-2 text-indigo-600 font-black text-xs uppercase tracking-widest hover:underline">
-                    Plan something now →
-                </Link>
+            <div className="w-full">
+                <EmptyState 
+                  type="calendar" 
+                  title="No Posts Today" 
+                  description="You don't have any posts scheduled to go live today. Fill up your calendar to stay consistent." 
+                />
             </div>
         )}
       </div>
 
 
-      {/* ── Quick Actions Grid ────────────────────────────────────────── */}
-      <div className="space-y-6">
-        <h2 className="text-xl font-black text-gray-900 tracking-tight px-2">Growth Accelerators</h2>
+      {/* ── How to start Grid ────────────────────────────────────────── */}
+      <div className="space-y-6 pt-6">
+        <h2 className="text-2xl font-black text-gray-900 tracking-tight px-2 text-center md:text-left uppercase">HOW DO YOU WANT TO START?</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <Link href="/generator" className="group bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-2xl transition-all hover:border-indigo-100 relative overflow-hidden">
+          
+          <Link href="/generator" className="group bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-2xl transition-all hover:-translate-y-1 hover:border-indigo-100 relative overflow-hidden flex flex-col items-center md:items-start text-center md:text-left">
             <div className="absolute -right-4 -bottom-4 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
                 <PenTool className="w-32 h-32" />
             </div>
-            <div className="w-16 h-16 rounded-3xl bg-indigo-50 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-500">
-              <PenTool className="w-8 h-8" />
+            <div className="w-16 h-16 rounded-3xl bg-indigo-50 flex items-center justify-center mb-6 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-500 shadow-sm">
+              <span className="text-3xl">💡</span>
             </div>
-            <h3 className="text-xl font-black text-gray-900">Content Maestro</h3>
-            <p className="text-sm text-gray-400 mt-2 font-medium leading-relaxed">Input one core USP or topic, and get a week of platform-optimized content instantly.</p>
+            <h3 className="text-xl font-black text-gray-900 mb-2 group-hover:text-indigo-600 transition-colors">I have a topic idea</h3>
+            <p className="text-sm text-gray-500 font-medium leading-relaxed mb-6">Enter a topic and generate a full week of optimized content in multiple languages.</p>
+            <div className="mt-auto flex items-center gap-2 text-indigo-600 font-bold text-sm">
+                Go to Content Generator <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </div>
           </Link>
           
-          <Link href="/repurpose" className="group bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-2xl transition-all hover:border-emerald-100 relative overflow-hidden">
+          <Link href="/repurpose" className="group bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-2xl transition-all hover:-translate-y-1 hover:border-emerald-100 relative overflow-hidden flex flex-col items-center md:items-start text-center md:text-left">
             <div className="absolute -right-4 -bottom-4 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-                <RefreshCw className="w-32 h-32" />
+                <Youtube className="w-32 h-32" />
             </div>
-            <div className="w-16 h-16 rounded-3xl bg-emerald-50 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-500">
-              <RefreshCw className="w-8 h-8" />
+            <div className="w-16 h-16 rounded-3xl bg-emerald-50 flex items-center justify-center mb-6 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-500 shadow-sm">
+              <span className="text-3xl">🎥</span>
             </div>
-            <h3 className="text-xl font-black text-gray-900">Repurpose Lab</h3>
-            <p className="text-sm text-gray-400 mt-2 font-medium leading-relaxed">Transform real estate listings, blogs, or YouTube URLs into viral social media formats.</p>
+            <h3 className="text-xl font-black text-gray-900 mb-2 group-hover:text-emerald-600 transition-colors">I have a YouTube/URL</h3>
+            <p className="text-sm text-gray-500 font-medium leading-relaxed mb-6">Transform existing videos or articles into fresh viral social media posts instantly.</p>
+            <div className="mt-auto flex items-center gap-2 text-emerald-600 font-bold text-sm">
+                Go to Repurpose Source <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </div>
           </Link>
           
-          <Link href="/templates" className="group bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-2xl transition-all hover:border-amber-100 relative overflow-hidden">
+          <Link href="/templates" className="group bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-2xl transition-all hover:-translate-y-1 hover:border-amber-100 relative overflow-hidden flex flex-col items-center md:items-start text-center md:text-left">
             <div className="absolute -right-4 -bottom-4 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
                 <LayoutTemplate className="w-32 h-32" />
             </div>
-            <div className="w-16 h-16 rounded-3xl bg-amber-50 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-amber-600 group-hover:text-white transition-all duration-500">
-              <LayoutTemplate className="w-8 h-8" />
+            <div className="w-16 h-16 rounded-3xl bg-amber-50 flex items-center justify-center mb-6 group-hover:bg-amber-600 group-hover:text-white transition-all duration-500 shadow-sm">
+              <span className="text-3xl">📋</span>
             </div>
-            <h3 className="text-xl font-black text-gray-900">Proven Blueprint</h3>
-            <p className="text-sm text-gray-400 mt-2 font-medium leading-relaxed">Use battle-tested real estate content frameworks for investors, testimonials, and site visits.</p>
+            <h3 className="text-xl font-black text-gray-900 mb-2 group-hover:text-amber-600 transition-colors">Use a proven template</h3>
+            <p className="text-sm text-gray-500 font-medium leading-relaxed mb-6">Access battle-tested real estate scripts, carousels, and frameworks that covert.</p>
+            <div className="mt-auto flex items-center gap-2 text-amber-600 font-bold text-sm">
+                Go to Real Estate Templates <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </div>
           </Link>
+        </div>
+
+        {/* ── AutoPilot Banner ────────────────────────────────────────────── */}
+        <div className="relative overflow-hidden mt-8 rounded-[2.5rem] bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 shadow-xl border border-indigo-900">
+          {/* Subtle Background Glow/Noise */}
+          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay pointer-events-none"></div>
+          <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500 rounded-full mix-blend-screen filter blur-[100px] opacity-20 pointer-events-none animate-pulse"></div>
+          <div className="absolute -bottom-10 left-10 w-64 h-64 bg-fuchsia-500 rounded-full mix-blend-screen filter blur-[80px] opacity-20 pointer-events-none animate-pulse" style={{ animationDelay: "2s" }}></div>
+
+          <div className="relative z-10 p-10 md:p-14 flex flex-col md:flex-row items-center justify-between gap-10">
+            <div className="flex-1 pr-6 flex flex-col md:items-start items-center text-center md:text-left">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 backdrop-blur-md mb-6 shadow-sm">
+                <Sparkles className="w-4 h-4 text-indigo-300" />
+                <span className="text-xs font-bold tracking-widest text-indigo-100 uppercase">Coming Soon</span>
+              </div>
+              <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-tight lg:leading-[1.1] mb-5">
+                Contentsathi <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-fuchsia-300 to-indigo-300">AutoPilot</span> 🚀
+              </h2>
+              <p className="text-indigo-100 max-w-xl text-lg md:text-xl font-medium leading-relaxed opacity-90 drop-shadow-sm">
+                Set your weekly content goal. Your AI Content Partner handles the rest — picks topics, writes in 10 Indian languages, schedules, and publishes every day without you clicking anything. Built on agentic AI.
+              </p>
+            </div>
+
+            <div className="w-full md:w-[420px] shrink-0">
+              <div className="bg-white/10 backdrop-blur-xl border border-white/20 p-8 rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
+                {waitlistSuccess ? (
+                  <div className="text-center py-6 animate-in fade-in zoom-in duration-500">
+                    <div className="w-20 h-20 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center mx-auto mb-5 border border-green-500/30">
+                      <CheckCircle2 className="w-10 h-10" />
+                    </div>
+                    <h3 className="text-2xl font-black text-white mb-2">You&apos;re on the list!</h3>
+                    <p className="text-indigo-100 font-medium opacity-90">We&apos;ll notify you the moment AutoPilot launches. You&apos;ll get 500 bonus credits at launch.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="mb-6 text-center md:text-left">
+                        <h4 className="text-xl font-bold text-white mb-2">Join the Waitlist</h4>
+                        <p className="text-sm text-indigo-200">Get early access to skip the queue and receive 500 bonus credits.</p>
+                    </div>
+                    <form onSubmit={handleWaitlistSubmit} className="flex flex-col gap-4 relative z-20">
+                      <input 
+                        type="email" 
+                        required
+                        value={waitlistEmail}
+                        onChange={(e) => { setWaitlistEmail(e.target.value); setWaitlistError(""); }}
+                        placeholder="Enter your email address"
+                        className={`w-full px-5 py-4 bg-white/5 border rounded-2xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-fuchsia-400 focus:bg-white/10 transition-all font-medium backdrop-blur-md ${
+                          waitlistError ? "border-red-400" : "border-white/20"
+                        }`}
+                      />
+                      {waitlistError && (
+                        <p className="text-red-400 text-xs font-semibold -mt-2 ml-1">{waitlistError}</p>
+                      )}
+                      <button 
+                        type="submit"
+                        disabled={waitlistLoading}
+                        className="w-full relative group overflow-hidden bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-white font-black px-6 py-4 rounded-2xl transition-all shadow-lg hover:shadow-indigo-500/30 disabled:opacity-70 disabled:cursor-not-allowed"
+                      >
+                        <span className="relative z-10 flex items-center justify-center gap-2">
+                          {waitlistLoading ? <RefreshCw className="w-5 h-5 animate-spin" /> : "Secure My Spot — Free"}
+                        </span>
+                        <div className="absolute inset-0 bg-white/20 translate-y-[100%] group-hover:translate-y-[0%] transition-transform duration-300"></div>
+                      </button>
+                    </form>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

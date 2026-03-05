@@ -88,6 +88,7 @@ model User {
   notifyOnFailure       Boolean   @default(true)
   notifyWeeklyDigest    Boolean   @default(false)
   notifyWhatsappNumber  String?
+  isAdmin               Boolean   @default(false)
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
@@ -105,8 +106,29 @@ model User {
   webhookEndpoints      WebhookEndpoint[]
   postAnalytics         PostAnalytics[]
   whatsappSequences     WhatsAppSequence[]
+  agentTasks            AgentTask[]
 
   @@map("users")
+}
+
+model AgentTask {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goal            String
+  source          String    @default("whatsapp") // whatsapp, web
+  status          String    @default("processing") // processing, completed, failed
+  progress        Int       @default(0)
+  currentAgent    String    @default("Orchestrator")
+  deepResearchData Json?    // deep web research, competitive analysis, lead gen angles
+  generatedContent Json?    // array of finalized post texts
+  completedAt     DateTime?
+  logs            Json?     // structured logs of agent actions
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([userId, status])
+  @@map("agent_tasks")
 }
 
 model ContentBrain {
@@ -126,8 +148,15 @@ model ContentBrain {
   contactPhone        String?
   contactEmail        String?
   contactWebsite      String?
-  goldenExamples      String[]      // If using SQLite before, might need to change to Json for arrays if Postgres version requires
+  propertyType        String?       // Residential Plots, Flats, Commercial, Villas, Mixed
+  customerType        String?       // First-time buyers, Investors, NRIs, All
+  contentPurpose      String?       // Lead Generation, Brand Awareness, etc.
+  usps                String[]      // RERA, Near highway, Affordable, Premium, Vastu, Ready possession
+  contentDna          Json?         // Sarvam-generated brand profile: USP, triggers, talking points, themes
+  goldenExamples      String[]
   competitorHandles   String[]
+  orchestratorMemory  String?       // Soul.md — auto-updating core rules/preferences for the AI Brain
+  orchestratorChatHistory Json?     // Last N chat messages for the "Chat with Brain" interface
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
 
@@ -148,6 +177,7 @@ model SocialAccount {
   pageName            String?
   channelId           String?
   channelName         String?
+  metadata            Json?
   isActive            Boolean       @default(true)
   lastUsedAt          DateTime?
   createdAt           DateTime      @default(now())
@@ -305,6 +335,7 @@ model ContentSuggestion {
   templateType        String?
   isTrending          Boolean         @default(false)
   festivalTag         String?
+  pillar              String?         // trust, authority, proof, listing, expertise, relevance, conversion
   date                DateTime
   wasUsed             Boolean         @default(false)
   usedAt              DateTime?
@@ -503,4 +534,16 @@ model WhatsAppSequenceStep {
   updatedAt           DateTime              @updatedAt
 
   @@map("whatsapp_sequence_steps")
+}
+
+
+
+model Waitlist {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  userId    String?
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@map("waitlist")
 }

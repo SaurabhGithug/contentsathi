@@ -2,9 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import crypto from "crypto";
 
-// Twitter OAuth 2.0 PKCE flow
-// Store code_verifier in a server-side state map (use Redis in production)
-const pendingVerifiers = new Map<string, string>();
+import { pendingVerifiers } from "@/lib/twitter-cache";
 
 export async function GET() {
   const session = await getServerSession();
@@ -28,5 +26,4 @@ export async function GET() {
   return NextResponse.redirect(twitterOAuthUrl);
 }
 
-// Export verifiers map so callback can access it
-export { pendingVerifiers };
+

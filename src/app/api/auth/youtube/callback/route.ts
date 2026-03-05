@@ -8,7 +8,8 @@ export async function GET(req: Request) {
   const error = searchParams.get("error");
 
   if (error || !code || !state) {
-    return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/settings?tab=accounts&error=oauth_denied`);
+    const errorMsg = error === "access_denied" ? "oauth_denied" : "token_failed";
+    return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/settings?tab=accounts&error=${errorMsg}`);
   }
 
   let email = "";
@@ -36,6 +37,7 @@ export async function GET(req: Request) {
   const tokenData = await tokenRes.json();
 
   if (!tokenData.access_token) {
+    console.error("[YouTube OAuth] Token exchange failed:", tokenData);
     return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/settings?tab=accounts&error=token_failed`);
   }
 

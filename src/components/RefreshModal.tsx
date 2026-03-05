@@ -48,7 +48,7 @@ export default function RefreshModal({ post, onClose, onSuccess }: RefreshModalP
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
           <div>
             <h2 className="text-lg font-bold text-gray-900">Refresh & Republish</h2>
-            <p className="text-sm text-gray-500">Rewrite "{post.title}" for {post.platform}</p>
+            <p className="text-sm text-gray-500">Rewrite &quot;{post.title}&quot; for {post.platform}</p>
           </div>
           <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
             <X className="w-5 h-5" />
@@ -101,7 +101,7 @@ export default function RefreshModal({ post, onClose, onSuccess }: RefreshModalP
                 ) : (
                   <div className="h-full flex flex-col flex-1 items-center justify-center text-center text-gray-400 p-6">
                     <RefreshCw className="w-10 h-10 mb-3 opacity-20" />
-                    <p className="text-sm">Click "AI Refresh" below to magically rewrite this post for today's context.</p>
+                    <p className="text-sm">Click &quot;AI Refresh&quot; below to magically rewrite this post for today&apos;s context.</p>
                   </div>
                 )}
               </div>
