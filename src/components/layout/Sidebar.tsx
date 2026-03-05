@@ -19,6 +19,7 @@ import {
   Youtube,
   Facebook,
   MessageCircle,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -28,13 +29,14 @@ import * as Popover from "@radix-ui/react-popover";
 
 const navItems = [
   { name: "Agency HQ",             href: "/dashboard",             icon: LayoutDashboard },
-  { name: "AI Studio (New Campaign)", href: "/studio",               icon: BrainCircuit },
+  { name: "AI Studio",             href: "/studio",                icon: BrainCircuit },
+  { name: "Agent Team",            href: "/agents",                icon: Users },
   { name: "Approvals & QC",        href: "/approvals",             icon: BookOpen },
+  { name: "Market Hunter",         href: "/market-watch",          icon: TrendingUp },
   { name: "Asset Vault",           href: "/library",               icon: LayoutTemplate },
   { name: "Content Calendar",      href: "/calendar",              icon: CalendarDays },
-  { name: "Market Hunter",         href: "/market-watch",          icon: TrendingUp },
-  { name: "WhatsApp Agents",       href: "/whatsapp-sequences",    icon: MessageSquare },
-  { name: "Team Economics",        href: "/analytics",             icon: Activity },
+  { name: "WhatsApp Agents",       href: "/whatsapp-sequences",    icon: MessageCircle },
+  { name: "Analytics",             href: "/analytics",             icon: Activity },
 ];
 
 import { BrainCircuit } from "lucide-react";

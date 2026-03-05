@@ -1,513 +1,308 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { 
-  PenTool, 
-  RefreshCw, 
-  LayoutTemplate, 
-  ArrowRight, 
-  TrendingUp, 
-  CalendarCheck,
-  Zap,
-  Instagram,
-  Linkedin,
-  Youtube,
-  MessageCircle,
-  Twitter,
-  Facebook,
-  CheckCircle2,
-  AlertCircle,
-  Clock,
-  Plus,
-  Sparkles
+import { useEffect, useState, useRef } from "react";
+import {
+  BrainCircuit, Zap, TrendingUp, CheckCircle2, AlertCircle,
+  Clock, Plus, Activity, ArrowRight, Sparkles, Target,
+  Users, CalendarCheck, BarChart3, Instagram, Linkedin,
+  Youtube, MessageCircle, Twitter, RefreshCw, ChevronRight,
+  Play, Pause, RotateCcw, Eye, Layers
 } from "lucide-react";
 import Link from "next/link";
-import { format } from "date-fns";
-import PostCard from "@/components/PostCard";
 import OnboardingWizard from "@/components/onboarding/OnboardingWizard";
-import EmptyState from "@/components/EmptyState";
-import toast from "react-hot-toast";
 
-
-interface SocialAccount {
-  platform: string;
-  isActive: boolean;
-  accountName: string | null;
-}
-
-interface DashboardStats {
-  postsPlanned: number;
-  postsPublished: number;
-  creditsBalance: number;
-  todayRecommendation: { title: string; platform: string } | null;
-  upcomingPosts: Array<{
-    id: string;
-    platform: string;
-    title: string;
-    scheduledAt: string;
-    status: string;
-  }>;
-  socialAccounts: SocialAccount[];
-  onboardingCompleted: boolean;
-}
-
-const PLATFORM_ICONS: Record<string, any> = {
-  instagram: Instagram,
-  linkedin: Linkedin,
-  x: Twitter,
-  youtube: Youtube,
-  facebook: Facebook,
-  whatsapp: MessageCircle,
-};
-
-function cn(...inputs: any[]) {
-    return inputs.filter(Boolean).join(" ");
-}
-
-const SMART_TOPIC_SUGGESTIONS = [
-  "Why investing in plots is smarter than buying flats in 2026",
-  "5 questions you must ask before buying any plot",
-  "How RERA changed real estate buying forever",
-  "Why Tier 2 cities are the best investment right now",
-  "The truth about property appreciation in India",
-  "How to spot a genuine real estate agent",
-  "Why weekend site visits lead to faster decisions",
-  "Top 3 mistakes first-time homebuyers make",
-  "How to negotiate the best property price",
-  "What vastu compliance actually means for buyers",
-  "Why NA plots are better than agricultural land",
-  "How Ring Road connectivity is changing property prices",
-  "What NRIs should know before buying property in India",
-  "Why festival season is the best time to buy property"
+// ─── Pipeline Stage Config ────────────────────────────────────────────────────
+const PIPELINE_STAGES = [
+  { id: "brief",     label: "Brief",     emoji: "🎯", color: "from-violet-500 to-indigo-500" },
+  { id: "research",  label: "Research",  emoji: "🔍", color: "from-blue-500 to-cyan-500" },
+  { id: "write",     label: "Write",     emoji: "✍️",  color: "from-cyan-500 to-teal-500" },
+  { id: "seo",       label: "SEO",       emoji: "🔤", color: "from-teal-500 to-emerald-500" },
+  { id: "design",    label: "Design",    emoji: "🎨", color: "from-amber-500 to-orange-500" },
+  { id: "qc",        label: "QC",        emoji: "✅",  color: "from-orange-500 to-rose-500" },
+  { id: "publish",   label: "Publish",   emoji: "🚀",  color: "from-rose-500 to-pink-500" },
 ];
 
-export default function Dashboard() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [todayPosts, setTodayPosts] = useState<any[]>([]);
-  const [suggestions, setSuggestions] = useState<any[]>([]);
+const STAGE_COLORS: Record<string, string> = {
+  processing: "bg-indigo-100 text-indigo-700 border-indigo-200",
+  completed:  "bg-emerald-100 text-emerald-700 border-emerald-200",
+  failed:     "bg-red-100 text-red-700 border-red-200",
+  pending:    "bg-gray-100 text-gray-500 border-gray-200",
+};
+
+const KPI_CARDS = [
+  { label: "Active Campaigns",     value: "3",    sub: "+1 since yesterday", color: "indigo",  icon: Layers },
+  { label: "Avg Cycle Time",       value: "4.2m",  sub: "Per 7-agent run",    color: "violet",  icon: Clock },
+  { label: "Approvals Pending",    value: "7",    sub: "In human-gate queue", color: "amber",   icon: CheckCircle2 },
+  { label: "Credits Used Today",   value: "340",  sub: "of ∞ agency plan",    color: "emerald", icon: Zap },
+];
+
+export default function AgencyHQPage() {
+  const [stats, setStats] = useState<any>(null);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [onboardingCompleted, setOnboardingCompleted] = useState(true);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [waitlistEmail, setWaitlistEmail] = useState("");
-  const [waitlistError, setWaitlistError] = useState("");
-  const [waitlistLoading, setWaitlistLoading] = useState(false);
-  const [waitlistSuccess, setWaitlistSuccess] = useState(false);
-  const [planTier, setPlanTier] = useState("free");
-  
-  const FREE_PLATFORMS = ["Instagram", "WhatsApp"];
-  
-  const handleWaitlistSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setWaitlistError("");
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!waitlistEmail || !emailRegex.test(waitlistEmail)) {
-        setWaitlistError("Sahi email daalo! e.g. sachin@gmail.com");
-        return;
-    }
-    setWaitlistLoading(true);
-    try {
-        const res = await fetch("/api/waitlist", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: waitlistEmail })
-        });
-        if (res.ok) {
-            setWaitlistSuccess(true);
-            toast.success("You're on the waitlist! 🚀");
-            setWaitlistEmail("");
-        } else {
-            toast.error("Failed to join waitlist. Please try again.");
-        }
-    } catch {
-        toast.error("Something went wrong");
-    } finally {
-        setWaitlistLoading(false);
-    }
-  };
+  const [viewMode, setViewMode] = useState<"heatmap" | "list">("heatmap");
+  const pollingRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
-    async function loadDashboard() {
-      try {
-        const [statsRes, todayRes, suggRes] = await Promise.all([
-          fetch("/api/dashboard/stats"),
-          fetch("/api/calendar/today"),
-          fetch("/api/suggestions/today")
-        ]);
-
-        if (!statsRes.ok || !todayRes.ok || !suggRes.ok) throw new Error("Failed to load");
-        
-        const statsData = await statsRes.json();
-        const todayData = await todayRes.json();
-        const suggData = await suggRes.json();
-
-        setStats(statsData);
-        setTodayPosts(todayData);
-        setSuggestions(suggData);
-
-        // Load user's plan to filter suggestions
-        const profileRes = await fetch("/api/user/profile");
-        if (profileRes.ok) {
-          const profile = await profileRes.json();
-          setPlanTier(profile.planTier || "free");
-        }
-      } catch {
-        setError("Could not load dashboard data.");
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadDashboard();
+    fetchAll();
+    pollingRef.current = setInterval(fetchAll, 6000);
+    return () => clearInterval(pollingRef.current);
   }, []);
 
-  const connectedPlatforms = stats?.socialAccounts.map(a => a.platform.toLowerCase()) || [];
+  async function fetchAll() {
+    try {
+      const [statsRes, tasksRes] = await Promise.all([
+        fetch("/api/dashboard/stats"),
+        fetch("/api/studio/tasks"),
+      ]);
+      if (statsRes.ok) {
+        const s = await statsRes.json();
+        setStats(s);
+        setOnboardingCompleted(s.onboardingCompleted ?? true);
+      }
+      if (tasksRes.ok) {
+        const t = await tasksRes.json();
+        setTasks(t.tasks || []);
+      }
+    } catch {}
+    finally { setLoading(false); }
+  }
+
+  // Derive pipeline heatmap data from tasks
+  const stageMap: Record<string, number> = {};
+  tasks.forEach((t: any) => {
+    const agent = (t.currentAgent || "").toLowerCase();
+    if (agent.includes("content") || agent.includes("lead")) stageMap["brief"] = (stageMap["brief"] || 0) + 1;
+    else if (agent.includes("research")) stageMap["research"] = (stageMap["research"] || 0) + 1;
+    else if (agent.includes("copy") || agent.includes("write")) stageMap["write"] = (stageMap["write"] || 0) + 1;
+    else if (agent.includes("seo")) stageMap["seo"] = (stageMap["seo"] || 0) + 1;
+    else if (agent.includes("visual") || agent.includes("design")) stageMap["design"] = (stageMap["design"] || 0) + 1;
+    else if (agent.includes("qc") || agent.includes("audit")) stageMap["qc"] = (stageMap["qc"] || 0) + 1;
+    else if (agent.includes("publish") || agent.includes("distribut")) stageMap["publish"] = (stageMap["publish"] || 0) + 1;
+  });
+
+  const activeTasks = tasks.filter(t => t.status === "processing");
+  const completedCount = tasks.filter(t => t.status === "completed").length;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-10 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      
-      {!loading && stats && !stats.onboardingCompleted && (
-        <OnboardingWizard onComplete={() => setStats({...stats, onboardingCompleted: true})} />
+    <div className="max-w-7xl mx-auto space-y-8 pb-24 animate-in fade-in slide-in-from-bottom-4 duration-700">
+
+      {!onboardingCompleted && (
+        <OnboardingWizard onComplete={() => setOnboardingCompleted(true)} />
       )}
 
-      {/* ── Connected Accounts Bar ────────────────────────────────────────── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/50 backdrop-blur-md border border-gray-100 p-4 rounded-3xl shadow-sm">
-        <div className="flex items-center gap-4 border-r border-gray-100 pr-6 mr-2">
-            <h2 className="text-xs font-black uppercase tracking-widest text-gray-400">Connected</h2>
-            <div className="flex items-center gap-3">
-                {Object.keys(PLATFORM_ICONS).map((p) => {
-                    const Icon = PLATFORM_ICONS[p];
-                    const isConnected = connectedPlatforms.includes(p);
-                    return (
-                        <Link key={p} href="/settings" className="relative group">
-                            <div className={cn(
-                                "p-2 rounded-xl transition-all duration-300",
-                                isConnected ? "bg-indigo-50 text-indigo-600" : "bg-gray-50 text-gray-300 grayscale"
-                            )}>
-                                <Icon className="w-5 h-5" />
-                            </div>
-                            {isConnected && (
-                                <div className="absolute -top-1 -right-1 bg-green-500 border-2 border-white rounded-full p-0.5">
-                                    <CheckCircle2 className="w-2.5 h-2.5 text-white" />
-                                </div>
-                            )}
-                        </Link>
-                    );
-                })}
-            </div>
+      {/* ── Header ─────────────────────────────────────────────────────── */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <p className="text-xs font-black uppercase tracking-widest text-indigo-500 mb-1">ContentSathi · Agency HQ</p>
+          <h1 className="text-4xl font-black text-gray-900 tracking-tight">Mission Control</h1>
+          <p className="text-gray-400 font-medium mt-1">Your 7-agent AI content team, live at a glance.</p>
         </div>
-
-        {connectedPlatforms.length === 0 && !loading && (
-            <div className="flex-1 flex items-center gap-3 text-amber-700 bg-amber-50 px-4 py-2 rounded-2xl border border-amber-100 animate-pulse">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <p className="text-xs font-bold">No accounts connected. Connect your social channels to enable direct publishing.</p>
-                <Link href="/settings" className="ml-auto text-xs font-black underline underline-offset-4">Connect Now</Link>
-            </div>
-        )}
-
-        <div className="flex items-center gap-4 ml-auto">
-            <div className="text-right">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Posts Remaining This Month</p>
-                <p className="text-sm font-black text-indigo-600">
-                  {stats?.creditsBalance != null 
-                    ? stats.creditsBalance > 10000 
-                      ? "Unlimited" 
-                      : Math.max(0, Math.floor(stats.creditsBalance / 5)).toLocaleString()
-                    : "30"}
-                </p>
-            </div>
-            <Link href="/billing" className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100">
-                <Plus className="w-4 h-4" />
-            </Link>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-xl">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-xs font-black text-emerald-700">{activeTasks.length} Agents Running</span>
+          </div>
+          <Link href="/studio" className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm rounded-xl shadow-md shadow-indigo-200 transition-all">
+            <Zap className="w-4 h-4 fill-current" />
+            New Campaign
+          </Link>
         </div>
       </div>
 
-      {/* ── Welcome Header ───────────────────────────────────────── */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-4xl font-black text-gray-900 tracking-tight">Agency HQ</h1>
+      {/* ── KPI Row ────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: "Active Campaigns",   value: loading ? "—" : activeTasks.length,            sub: "Currently processing",   color: "indigo",  icon: Layers },
+          { label: "Completed Runs",     value: loading ? "—" : completedCount,                sub: "All time",               color: "emerald", icon: CheckCircle2 },
+          { label: "Approvals Pending",  value: "3",                                           sub: "In human-gate queue",    color: "amber",   icon: CheckCircle2 },
+          { label: "Credits Balance",    value: loading ? "—" : (stats?.creditsBalance ?? "∞"), sub: "Posts remaining",       color: "violet",  icon: Zap },
+        ].map((kpi, i) => {
+          const Icon = kpi.icon;
+          return (
+            <div key={i} className="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-6 flex items-center justify-between group hover:border-indigo-100 hover:shadow-lg transition-all">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">{kpi.label}</p>
+                <p className="text-4xl font-black text-gray-900">{kpi.value}</p>
+                <p className="text-xs text-gray-400 font-medium mt-0.5">{kpi.sub}</p>
+              </div>
+              <div className={`w-14 h-14 rounded-2xl bg-${kpi.color}-50 flex items-center justify-center group-hover:bg-${kpi.color}-600 group-hover:text-white transition-all duration-300`}>
+                <Icon className="w-7 h-7" />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── Pipeline Heatmap ───────────────────────────────────────────── */}
+      <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-8 pt-6 pb-4">
+          <div>
+            <h2 className="text-xl font-black text-gray-900">Live Pipeline Heatmap</h2>
+            <p className="text-xs text-gray-400 font-medium mt-0.5">Idea → Brief → Research → Write → QC → Publish</p>
           </div>
-          <p className="text-gray-500 font-medium">Your 7-agent AI content team is standing by.</p>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setViewMode("heatmap")} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === "heatmap" ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-500"}`}>Heatmap</button>
+            <button onClick={() => setViewMode("list")} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === "list" ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-500"}`}>List</button>
+          </div>
         </div>
-        <Link
-          href="/studio"
-          className="group relative inline-flex items-center gap-3 px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black transition-all shadow-xl shadow-indigo-200 overflow-hidden"
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-          <Zap className="w-5 h-5 fill-current" />
-          Brief Your Content Lead
+
+        {viewMode === "heatmap" ? (
+          <div className="px-8 pb-8">
+            {/* Stage flow */}
+            <div className="flex items-stretch gap-1 overflow-x-auto pb-2">
+              {PIPELINE_STAGES.map((stage, i) => {
+                const count = stageMap[stage.id] || 0;
+                const intensity = count > 0 ? "opacity-100 shadow-lg scale-105" : "opacity-40";
+                return (
+                  <div key={stage.id} className="flex items-center gap-1 flex-1 min-w-[80px]">
+                    <div className={`flex-1 rounded-2xl p-4 text-center cursor-pointer transition-all duration-300 bg-gradient-to-b ${stage.color} ${intensity}`}>
+                      <div className="text-2xl mb-2">{stage.emoji}</div>
+                      <p className="text-white text-xs font-black uppercase">{stage.label}</p>
+                      {count > 0 && (
+                        <div className="mt-2 bg-white/20 rounded-lg px-2 py-1">
+                          <p className="text-white text-sm font-black">{count}</p>
+                        </div>
+                      )}
+                    </div>
+                    {i < PIPELINE_STAGES.length - 1 && (
+                      <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Active campaign pills */}
+            {activeTasks.length > 0 && (
+              <div className="mt-6 space-y-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Active Campaigns</p>
+                {activeTasks.map((task: any) => (
+                  <div key={task.id} className="flex items-center gap-4 bg-indigo-50 border border-indigo-100 rounded-2xl px-5 py-3">
+                    <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center">
+                      <BrainCircuit className="w-4 h-4 text-white animate-pulse" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-black text-indigo-900 truncate">{task.goal}</p>
+                      <p className="text-[10px] text-indigo-500 font-bold uppercase">{task.currentAgent} · {task.progress}% complete</p>
+                    </div>
+                    <div className="h-1.5 w-32 bg-indigo-200 rounded-full overflow-hidden">
+                      <div className="h-full bg-indigo-600 rounded-full transition-all duration-1000" style={{ width: `${task.progress}%` }} />
+                    </div>
+                    <Link href="/studio" className="text-xs font-black text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                      Watch <Eye className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {tasks.length === 0 && !loading && (
+              <div className="mt-8 text-center py-10 border-2 border-dashed border-gray-100 rounded-3xl">
+                <BrainCircuit className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+                <p className="text-gray-400 font-bold text-sm">No active campaigns. The pipeline is clear.</p>
+                <Link href="/studio" className="mt-4 inline-flex items-center gap-2 text-sm font-black text-indigo-600 hover:text-indigo-800">
+                  Brief the team now <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100 px-0">
+            {tasks.length === 0 && <p className="py-10 text-center text-gray-400 font-medium text-sm">No campaigns yet.</p>}
+            {tasks.slice(0, 5).map((task: any) => (
+              <div key={task.id} className="flex items-center gap-4 px-8 py-4 hover:bg-gray-50">
+                <div className={`w-3 h-3 rounded-full ${task.status === "processing" ? "bg-indigo-500 animate-pulse" : task.status === "completed" ? "bg-emerald-500" : "bg-red-500"}`} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-gray-900 truncate">{task.goal}</p>
+                  <p className="text-[10px] text-gray-400 font-medium uppercase">{task.status} · {task.currentAgent}</p>
+                </div>
+                <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-full border ${STAGE_COLORS[task.status] || STAGE_COLORS["pending"]}`}>
+                  {task.status}
+                </span>
+                <p className="text-xs text-gray-400">{task.progress}%</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Meet Your Team + Quick Actions ─────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Agent Status Mini-Cards */}
+        <div className="lg:col-span-2 bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-6">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-lg font-black text-gray-900">Your Agency Team</h2>
+            <Link href="/agents" className="text-xs font-black text-indigo-600 flex items-center gap-1 hover:text-indigo-800">
+              Full Detail View <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { role: "Content Lead",     emoji: "👩‍💼", status: "Standby",    color: "violet" },
+              { role: "Research Agent",   emoji: "🕵️",  status: activeTasks.length > 0 ? "Active" : "Standby", color: "blue" },
+              { role: "Copywriter",       emoji: "✍️",   status: "Standby",    color: "cyan" },
+              { role: "SEO Expert",       emoji: "🔍",  status: "Standby",    color: "teal" },
+              { role: "Visual Designer",  emoji: "🎨",  status: "Standby",    color: "amber" },
+              { role: "QC Auditor",       emoji: "✅",   status: "Standby",    color: "emerald" },
+              { role: "Distribution",     emoji: "🚀",   status: "Standby",    color: "rose" },
+            ].map((agent) => (
+              <div key={agent.role} className="bg-gray-50 rounded-2xl p-3 text-center hover:bg-indigo-50 hover:border-indigo-100 border border-transparent transition-all">
+                <div className="text-2xl mb-2">{agent.emoji}</div>
+                <p className="text-[10px] font-black text-gray-800 leading-tight">{agent.role}</p>
+                <div className={`mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${agent.status === "Active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-400"}`}>
+                  {agent.status === "Active" && <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />}
+                  {agent.status}
+                </div>
+              </div>
+            ))}
+            <Link href="/agents" className="bg-gradient-to-br from-indigo-500 to-fuchsia-600 rounded-2xl p-3 text-center flex flex-col items-center justify-center cursor-pointer hover:-translate-y-0.5 transition-all">
+              <Sparkles className="w-6 h-6 text-white mb-2" />
+              <p className="text-[10px] font-black text-white">View Team Details</p>
+            </Link>
+          </div>
+        </div>
+
+        {/* Quick Actions Panel */}
+        <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-[2.5rem] p-6 text-white shadow-xl">
+          <h2 className="text-lg font-black mb-4">Quick Actions</h2>
+          <div className="space-y-3">
+            {[
+              { label: "New Campaign",        href: "/studio",    emoji: "⚡", desc: "Brief the 7-agent team" },
+              { label: "Review Approvals",    href: "/approvals", emoji: "✅", desc: "3 items pending review" },
+              { label: "Market Hunter",       href: "/market-watch", emoji: "🎯", desc: "Competitor analysis" },
+              { label: "Asset Vault",         href: "/library",   emoji: "📦", desc: "All published content" },
+              { label: "Calendar",            href: "/calendar",  emoji: "📅", desc: "Publishing schedule" },
+            ].map((action) => (
+              <Link key={action.href} href={action.href}
+                className="flex items-center gap-3 p-3 bg-white/10 hover:bg-white/20 border border-white/10 rounded-2xl transition-all group"
+              >
+                <span className="text-xl">{action.emoji}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-black">{action.label}</p>
+                  <p className="text-[10px] text-white/60 font-medium">{action.desc}</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-white/40 group-hover:text-white/80 group-hover:translate-x-1 transition-all" />
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Published Today ─────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between px-1">
+        <h2 className="text-xl font-black text-gray-900">Publishing Today</h2>
+        <Link href="/calendar" className="text-xs font-black text-indigo-600 flex items-center gap-1 hover:text-indigo-800">
+          Full Calendar <ChevronRight className="w-3.5 h-3.5" />
         </Link>
       </div>
-
-      {/* ── Stats Highlights ─────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm flex items-center justify-between group hover:border-indigo-100 transition-all">
-          <div className="space-y-1">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Active Pipeline</p>
-            <h3 className="text-4xl font-black text-gray-900">{stats?.postsPlanned ?? 0}</h3>
-            {/* FIX 2: Only show % badge when there is actual data */}
-            {(stats?.postsPlanned ?? 0) > 0 ? (
-              <p className="text-[10px] font-bold text-green-500 bg-green-50 px-2 py-0.5 rounded-full inline-block">+12% from last week</p>
-            ) : (
-              <p className="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full inline-block">Aapka pehla post generate karo! 🚀</p>
-            )}
-          </div>
-          <div className="w-16 h-16 rounded-3xl bg-indigo-50 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
-            <CalendarCheck className="w-8 h-8" />
-          </div>
-        </div>
-        
-        <div className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm flex items-center justify-between group hover:border-green-100 transition-all">
-          <div className="space-y-1">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Live Reach</p>
-            <h3 className="text-4xl font-black text-gray-900">{stats?.postsPublished ?? 0}</h3>
-            <p className="text-[10px] font-bold text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-full inline-block">Total published posts</p>
-          </div>
-          <div className="w-16 h-16 rounded-3xl bg-green-50 flex items-center justify-center group-hover:bg-green-600 group-hover:text-white transition-all duration-300">
-            <TrendingUp className="w-8 h-8" />
-          </div>
-        </div>
-
-        <div className="relative bg-gradient-to-br from-indigo-600 to-purple-700 p-6 md:p-8 rounded-[2.5rem] shadow-2xl shadow-indigo-200 text-white flex flex-col justify-between overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform duration-700 pointer-events-none">
-            <Sparkles className="w-32 h-32" />
-          </div>
-          <div className="relative z-10 flex-1">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-white/70 text-xs font-black uppercase tracking-widest">Market Hunter Suggestion:</span>
-            </div>
-            <h3 className="text-lg font-bold leading-tight line-clamp-3 mb-2" style={{ textWrap: 'balance' }}>
-              {SMART_TOPIC_SUGGESTIONS[Math.floor(Math.random() * SMART_TOPIC_SUGGESTIONS.length)]}
-            </h3>
-            {suggestions?.[0]?.description && (
-              <p className="text-sm text-indigo-100 line-clamp-2">
-                {suggestions[0].description}
-              </p>
-            )}
-          </div>
-
-          <div className="relative z-10 mt-6 flex flex-col gap-2">
-            <Link 
-              href={`/studio?goal=${encodeURIComponent(suggestions?.[0]?.topic || "")}`}
-              className="inline-flex items-center justify-center gap-2 text-sm font-black bg-white text-indigo-700 hover:bg-indigo-50 px-4 py-3 rounded-xl transition-all shadow-lg hover:-translate-y-0.5"
-            >
-              Feed to AI Team <Zap className="w-4 h-4 fill-current" />
-            </Link>
-            <Link 
-              href="/studio" 
-              className="inline-flex items-center justify-center gap-2 text-xs font-bold text-white/80 hover:text-white bg-white/10 hover:bg-white/20 px-4 py-2.5 rounded-xl transition-all"
-            >
-              Start blank brief <span className="opacity-60">→</span>
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Smart Suggestions ─────────────────────────────────────────────── */}
-      <div className="space-y-6">
-        <div className="flex items-center gap-3 px-2">
-            <div className="p-3 bg-amber-50 rounded-2xl text-amber-600">
-                <Sparkles className="w-6 h-6" />
-            </div>
-            <h2 className="text-2xl font-black text-gray-900 tracking-tight">AI Strategy Recommendations</h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {loading ? (
-                [1, 2, 3].map(i => (
-                    <div key={i} className="h-44 bg-gray-50 rounded-[2.5rem] animate-pulse border border-gray-100" />
-                ))
-            ) : suggestions.length > 0 ? (
-                suggestions
-                  .filter(s => planTier !== "free" || FREE_PLATFORMS.includes(s.platform))
-                  .map((s) => (
-                    <div key={s.id} className="group relative bg-white border border-gray-100 p-8 rounded-[2.5rem] shadow-sm hover:shadow-2xl transition-all hover:border-indigo-100 overflow-hidden">
-                        <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                            {s.type === 'festival' ? <Plus className="w-24 h-24" /> : <Zap className="w-24 h-24" />}
-                        </div>
-                        <div className="relative z-10 flex flex-col h-full">
-                            <div className="flex items-center justify-between mb-4">
-                                <span className={cn(
-                                    "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
-                                    s.urgency === 'high' ? "bg-red-50 text-red-600 border border-red-100" : "bg-indigo-50 text-indigo-600 border border-indigo-100"
-                                )}>
-                                    {s.type.replace('_', ' ')}
-                                </span>
-                                <span className="text-[10px] font-bold text-gray-400">{s.platform}</span>
-                            </div>
-                            <h3 className="text-lg font-black text-gray-900 leading-tight mb-2 group-hover:text-indigo-600 transition-colors">
-                                {s.title}
-                            </h3>
-                            <p className="text-sm text-gray-500 font-medium mb-6 line-clamp-2">
-                                {s.description}
-                            </p>
-                            <Link 
-                                href={`/studio?goal=${encodeURIComponent(s.topic)}`}
-                                className="mt-auto inline-flex items-center gap-2 text-xs font-black text-indigo-600 group-hover:gap-3 transition-all"
-                            >
-                                Dispatch to Agents <ArrowRight className="w-4 h-4" />
-                            </Link>
-                        </div>
-                    </div>
-                ))
-            ) : (
-                <div className="md:col-span-3">
-                    <EmptyState 
-                      type="dashboard" 
-                      title="No Fresh AI Suggestions" 
-                      description="Our AI needs more context to generate strategy recommendations. Start by creating a few campaigns." 
-                    />
-                </div>
-            )}
-        </div>
-      </div>
-
-
-      {/* ── Publishing Today (Phase F2, H6) ───────────────────────────────────────────── */}
-      <div className="space-y-6">
-        <div className="flex items-center justify-between px-2">
-            <div className="flex items-center gap-3">
-                <div className="p-3 bg-indigo-50 rounded-2xl text-indigo-600">
-                    <Clock className="w-6 h-6" />
-                </div>
-                <h2 className="text-2xl font-black text-gray-900 tracking-tight">Publishing Today</h2>
-            </div>
-            {todayPosts.length > 0 && (
-                <span className="text-xs font-black text-gray-400 uppercase bg-gray-50 px-4 py-2 rounded-full border border-gray-100">
-                    {todayPosts.length} Items Scheduled
-                </span>
-            )}
-        </div>
-
-        {todayPosts.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {todayPosts.map((item) => (
-                    <div key={item.id} className="relative group">
-                        <div className="absolute -top-3 left-6 z-10 px-4 py-1.5 bg-indigo-600 text-white text-[10px] font-black rounded-full shadow-lg flex items-center gap-2">
-                            <Clock className="w-3 h-3" />
-                            {item.scheduledAt ? format(new Date(item.scheduledAt), "hh:mm a") : "Today"}
-                        </div>
-                        <PostCard 
-                            post={{
-                                ...item.generatedAsset,
-                                platform: item.platform,
-                                qualityScore: item.generatedAsset?.qualityScore || 85,
-                            }} 
-                        />
-                    </div>
-                ))}
-            </div>
-        ) : (
-            <div className="w-full">
-                <EmptyState 
-                  type="calendar" 
-                  title="No Posts Today" 
-                  description="You don't have any posts scheduled to go live today. Fill up your calendar to stay consistent." 
-                />
-            </div>
-        )}
-      </div>
-
-
-      {/* ── Meet Your Team Grid ────────────────────────────────────────── */}
-      <div className="space-y-6 pt-6">
-        <h2 className="text-2xl font-black text-gray-900 tracking-tight px-2 text-center md:text-left uppercase">Meet Your Dedicated Team</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          
-          {[
-            { role: "Content Lead", desc: "Strategy & Briefs", emoji: "👩‍💼" },
-            { role: "Research Agent", desc: "Data & Market Scraping", emoji: "🕵️" },
-            { role: "Copywriter", desc: "Persuasive Hooks", emoji: "✍️" },
-            { role: "SEO Expert", desc: "Discoverability", emoji: "🔍" },
-            { role: "Visual Designer", desc: "Image Prompts", emoji: "🎨" },
-            { role: "QC Auditor", desc: "Fact Checking", emoji: "✅" },
-            { role: "Distribution Lead", desc: "Publishing", emoji: "🚀" }
-          ].map((agent, i) => (
-             <div key={i} className="bg-white p-5 rounded-[2rem] border border-gray-100 shadow-sm flex flex-col items-center text-center hover:border-indigo-100 hover:shadow-lg transition-all">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center mb-4 text-2xl">
-                    {agent.emoji}
-                </div>
-                <h3 className="text-sm font-black text-gray-900 mb-1">{agent.role}</h3>
-                <p className="text-[10px] text-gray-500 font-bold uppercase">{agent.desc}</p>
-             </div>
-          ))}
-
-          <Link href="/studio" className="bg-gradient-to-br from-indigo-500 to-fuchsia-600 p-5 rounded-[2rem] shadow-sm flex flex-col items-center justify-center text-center group hover:-translate-y-1 hover:shadow-xl transition-all h-full">
-            <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center mb-4 text-white">
-                <Sparkles className="w-6 h-6" />
-            </div>
-            <h3 className="text-sm font-black text-white mb-1">Enter Studio</h3>
-            <p className="text-[10px] text-white/70 font-bold uppercase transition-transform group-hover:translate-x-1">Start Campaign →</p>
-          </Link>
-          
-        </div>
-
-        {/* ── AutoPilot Banner ────────────────────────────────────────────── */}
-        <div className="relative overflow-hidden mt-8 rounded-[2.5rem] bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 shadow-xl border border-indigo-900">
-          {/* Subtle Background Glow/Noise */}
-          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay pointer-events-none"></div>
-          <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500 rounded-full mix-blend-screen filter blur-[100px] opacity-20 pointer-events-none animate-pulse"></div>
-          <div className="absolute -bottom-10 left-10 w-64 h-64 bg-fuchsia-500 rounded-full mix-blend-screen filter blur-[80px] opacity-20 pointer-events-none animate-pulse" style={{ animationDelay: "2s" }}></div>
-
-          <div className="relative z-10 p-10 md:p-14 flex flex-col md:flex-row items-center justify-between gap-10">
-            <div className="flex-1 pr-6 flex flex-col md:items-start items-center text-center md:text-left">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 backdrop-blur-md mb-6 shadow-sm">
-                <Sparkles className="w-4 h-4 text-indigo-300" />
-                <span className="text-xs font-bold tracking-widest text-indigo-100 uppercase">Coming Soon</span>
-              </div>
-              <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-tight lg:leading-[1.1] mb-5">
-                Contentsathi <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-fuchsia-300 to-indigo-300">AutoPilot</span> 🚀
-              </h2>
-              <p className="text-indigo-100 max-w-xl text-lg md:text-xl font-medium leading-relaxed opacity-90 drop-shadow-sm">
-                Set your weekly content goal. Your AI Content Partner handles the rest — picks topics, writes in 10 Indian languages, schedules, and publishes every day without you clicking anything. Built on agentic AI.
-              </p>
-            </div>
-
-            <div className="w-full md:w-[420px] shrink-0">
-              <div className="bg-white/10 backdrop-blur-xl border border-white/20 p-8 rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
-                {waitlistSuccess ? (
-                  <div className="text-center py-6 animate-in fade-in zoom-in duration-500">
-                    <div className="w-20 h-20 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center mx-auto mb-5 border border-green-500/30">
-                      <CheckCircle2 className="w-10 h-10" />
-                    </div>
-                    <h3 className="text-2xl font-black text-white mb-2">You&apos;re on the list!</h3>
-                    <p className="text-indigo-100 font-medium opacity-90">We&apos;ll notify you the moment AutoPilot launches. You&apos;ll get 500 bonus credits at launch.</p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="mb-6 text-center md:text-left">
-                        <h4 className="text-xl font-bold text-white mb-2">Join the Waitlist</h4>
-                        <p className="text-sm text-indigo-200">Get early access to skip the queue and receive 500 bonus credits.</p>
-                    </div>
-                    <form onSubmit={handleWaitlistSubmit} className="flex flex-col gap-4 relative z-20">
-                      <input 
-                        type="email" 
-                        required
-                        value={waitlistEmail}
-                        onChange={(e) => { setWaitlistEmail(e.target.value); setWaitlistError(""); }}
-                        placeholder="Enter your email address"
-                        className={`w-full px-5 py-4 bg-white/5 border rounded-2xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-fuchsia-400 focus:bg-white/10 transition-all font-medium backdrop-blur-md ${
-                          waitlistError ? "border-red-400" : "border-white/20"
-                        }`}
-                      />
-                      {waitlistError && (
-                        <p className="text-red-400 text-xs font-semibold -mt-2 ml-1">{waitlistError}</p>
-                      )}
-                      <button 
-                        type="submit"
-                        disabled={waitlistLoading}
-                        className="w-full relative group overflow-hidden bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-white font-black px-6 py-4 rounded-2xl transition-all shadow-lg hover:shadow-indigo-500/30 disabled:opacity-70 disabled:cursor-not-allowed"
-                      >
-                        <span className="relative z-10 flex items-center justify-center gap-2">
-                          {waitlistLoading ? <RefreshCw className="w-5 h-5 animate-spin" /> : "Secure My Spot — Free"}
-                        </span>
-                        <div className="absolute inset-0 bg-white/20 translate-y-[100%] group-hover:translate-y-[0%] transition-transform duration-300"></div>
-                      </button>
-                    </form>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8 text-center">
+        <CalendarCheck className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+        <p className="text-gray-400 font-bold">No posts scheduled for today.</p>
+        <Link href="/studio" className="mt-3 inline-flex items-center gap-2 text-sm font-black text-indigo-600 hover:text-indigo-800">
+          Brief the team for a campaign <ArrowRight className="w-4 h-4" />
+        </Link>
       </div>
 
     </div>
