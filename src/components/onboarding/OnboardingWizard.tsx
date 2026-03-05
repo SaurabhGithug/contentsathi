@@ -147,8 +147,8 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
   // ── Generate first post ─────────────────────────────────────────────────
   async function generateFirstPost(topic: string) {
     setGenerating(true);
-    // Navigate to generator with topic pre-filled
-    window.location.href = `/generator?topic=${encodeURIComponent(topic)}`;
+    // Navigate to studio with topic pre-filled as a goal
+    window.location.href = `/studio?goal=${encodeURIComponent(topic)}`;
   }
 
   function getDefaultWeekPlan(loc: string, propType: string): WeekPlan[] {
