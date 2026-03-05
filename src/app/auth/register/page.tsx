@@ -32,8 +32,19 @@ export default function RegisterPage() {
       return;
     }
 
-    await signIn("credentials", { redirect: false, email, password });
-    router.push("/onboarding");
+    // Auto sign-in after successful registration
+    const signRes = await signIn("credentials", { 
+      redirect: false, 
+      email: email.trim().toLowerCase(), 
+      password 
+    });
+
+    if (signRes?.error) {
+      // If auto-signin fails (rare), redirect to login
+      window.location.href = "/auth/login?error=account_created";
+    } else {
+      window.location.href = "/onboarding";
+    }
   };
 
   return (

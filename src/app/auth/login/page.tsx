@@ -2,15 +2,19 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState(process.env.NODE_ENV === "development" ? "saurabh@example.com" : "");
-  const [password, setPassword] = useState(process.env.NODE_ENV === "development" ? "password123" : "");
-  const [error, setError] = useState("");
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+  const urlError = searchParams.get("error");
+  
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState(urlError ? "Security session expired. Please sign in again." : "");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -20,16 +24,17 @@ export default function LoginPage() {
 
     const res = await signIn("credentials", {
       redirect: false,
-      email,
+      email: email.trim().toLowerCase(),
       password,
+      callbackUrl,
     });
 
-    setLoading(false);
-
     if (res?.error) {
+      setLoading(false);
       setError("Invalid email or password. Please try again.");
     } else {
-      router.push("/dashboard");
+      // Use window.location for a hard refresh to ensure middleware/session picks up the new cookie instantly
+      window.location.href = callbackUrl;
     }
   };
 
