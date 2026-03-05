@@ -27,16 +27,14 @@ import * as Tooltip from "@radix-ui/react-tooltip";
 import * as Popover from "@radix-ui/react-popover";
 
 const navItems = [
-  { name: "Dashboard",             href: "/dashboard",             icon: LayoutDashboard },
-  { name: "Content Generator",     href: "/generator",             icon: PenTool },
-  { name: "Repurpose Source",      href: "/repurpose",             icon: RefreshCw },
-  { name: "Real Estate Templates", href: "/templates",             icon: LayoutTemplate },
-  { name: "Content Library",       href: "/library",               icon: BookOpen },
+  { name: "Agency HQ",             href: "/dashboard",             icon: LayoutDashboard },
+  { name: "AI Studio (New Campaign)", href: "/studio",               icon: BrainCircuit },
+  { name: "Approvals & QC",        href: "/approvals",             icon: BookOpen },
+  { name: "Asset Vault",           href: "/library",               icon: LayoutTemplate },
   { name: "Content Calendar",      href: "/calendar",              icon: CalendarDays },
-  { name: "WhatsApp Sequences",    href: "/whatsapp-sequences",    icon: MessageSquare },
-  { name: "Analytics",             href: "/analytics",             icon: Activity },
-  { name: "Market Watch",          href: "/market-watch",          icon: TrendingUp },
-  { name: "AI Co-Founder",         href: "/admin/agentic",         icon: BrainCircuit },
+  { name: "Market Hunter",         href: "/market-watch",          icon: TrendingUp },
+  { name: "WhatsApp Agents",       href: "/whatsapp-sequences",    icon: MessageSquare },
+  { name: "Team Economics",        href: "/analytics",             icon: Activity },
 ];
 
 import { BrainCircuit } from "lucide-react";
@@ -211,11 +209,11 @@ export function Sidebar() {
       {/* ── Mobile bottom nav (375px) ───────────────────────────────────── */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 flex items-center justify-around px-2 py-2 safe-area-inset-bottom pb-4">
         {[
-          { name: "Dashboard",  href: "/dashboard",  icon: LayoutDashboard, emoji: "🏠" },
-          { name: "Generate",   href: "/generator",  icon: PenTool, emoji: "✨" },
-          { name: "Calendar",   href: "/calendar",   icon: CalendarDays, emoji: "📅" },
-          { name: "Library",    href: "/library",    icon: BookOpen, emoji: "📚" },
-          { name: "Settings",   href: "/settings",   icon: Settings, emoji: "⚙️" },
+          { name: "HQ",         href: "/dashboard",  icon: LayoutDashboard, emoji: "🏢" },
+          { name: "Studio",     href: "/studio",     icon: BrainCircuit,    emoji: "🤖" },
+          { name: "Approvals",  href: "/approvals",  icon: BookOpen,        emoji: "✅" },
+          { name: "Calendar",   href: "/calendar",   icon: CalendarDays,    emoji: "📅" },
+          { name: "Settings",   href: "/settings",   icon: Settings,        emoji: "⚙️" },
         ].map((item) => {
           const isActive = pathname.startsWith(item.href);
           return (
@@ -227,7 +225,7 @@ export function Sidebar() {
               <div className={cn("text-lg", isActive ? "" : "opacity-60 grayscale")}>
                 {item.emoji}
               </div>
-              <span className={cn("text-[10px] font-medium leading-none", isActive ? "text-purple-700 font-bold" : "text-gray-500")}>
+              <span className={cn("text-[10px] font-medium leading-none", isActive ? "text-indigo-700 font-bold" : "text-gray-500")}>
                 {item.name}
               </span>
             </Link>

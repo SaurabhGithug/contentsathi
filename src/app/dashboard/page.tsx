@@ -223,18 +223,17 @@ export default function Dashboard() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-4xl font-black text-gray-900 tracking-tight">Namaskar, Saurabh!</h1>
+            <h1 className="text-4xl font-black text-gray-900 tracking-tight">Agency HQ</h1>
           </div>
-          <p className="text-gray-500 font-medium">Your ContentSathi has your content pipeline ready.</p>
-          <p className="text-xs text-indigo-500 font-semibold mt-1" title="Sathi means Partner. Always by your side.">✦ Sathi (साथी) means Partner. Always by your side.</p>
+          <p className="text-gray-500 font-medium">Your 7-agent AI content team is standing by.</p>
         </div>
         <Link
-          href="/generator"
+          href="/studio"
           className="group relative inline-flex items-center gap-3 px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black transition-all shadow-xl shadow-indigo-200 overflow-hidden"
         >
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
           <Zap className="w-5 h-5 fill-current" />
-          Generate This Week&apos;s Content
+          Brief Your Content Lead
         </Link>
       </div>
 
@@ -273,7 +272,7 @@ export default function Dashboard() {
           </div>
           <div className="relative z-10 flex-1">
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-white/70 text-xs font-black uppercase tracking-widest">Today&apos;s suggested topic:</span>
+              <span className="text-white/70 text-xs font-black uppercase tracking-widest">Market Hunter Suggestion:</span>
             </div>
             <h3 className="text-lg font-bold leading-tight line-clamp-3 mb-2" style={{ textWrap: 'balance' }}>
               {SMART_TOPIC_SUGGESTIONS[Math.floor(Math.random() * SMART_TOPIC_SUGGESTIONS.length)]}
@@ -287,16 +286,16 @@ export default function Dashboard() {
 
           <div className="relative z-10 mt-6 flex flex-col gap-2">
             <Link 
-              href={`/generator?topic=${encodeURIComponent(suggestions?.[0]?.topic || "")}&platform=${suggestions?.[0]?.platform || "Instagram"}`}
+              href={`/studio?goal=${encodeURIComponent(suggestions?.[0]?.topic || "")}`}
               className="inline-flex items-center justify-center gap-2 text-sm font-black bg-white text-indigo-700 hover:bg-indigo-50 px-4 py-3 rounded-xl transition-all shadow-lg hover:-translate-y-0.5"
             >
-              Use this topic <Zap className="w-4 h-4 fill-current" />
+              Feed to AI Team <Zap className="w-4 h-4 fill-current" />
             </Link>
             <Link 
-              href="/generator" 
+              href="/studio" 
               className="inline-flex items-center justify-center gap-2 text-xs font-bold text-white/80 hover:text-white bg-white/10 hover:bg-white/20 px-4 py-2.5 rounded-xl transition-all"
             >
-              Enter your own topic <span className="opacity-60">→</span>
+              Start blank brief <span className="opacity-60">→</span>
             </Link>
           </div>
         </div>
@@ -341,10 +340,10 @@ export default function Dashboard() {
                                 {s.description}
                             </p>
                             <Link 
-                                href={`/generator?topic=${encodeURIComponent(s.topic)}&platform=${s.platform}${s.festivalTag ? `&festival=${s.festivalTag}` : ''}`}
+                                href={`/studio?goal=${encodeURIComponent(s.topic)}`}
                                 className="mt-auto inline-flex items-center gap-2 text-xs font-black text-indigo-600 group-hover:gap-3 transition-all"
                             >
-                                Generate Now <ArrowRight className="w-4 h-4" />
+                                Dispatch to Agents <ArrowRight className="w-4 h-4" />
                             </Link>
                         </div>
                     </div>
@@ -408,52 +407,37 @@ export default function Dashboard() {
       </div>
 
 
-      {/* ── How to start Grid ────────────────────────────────────────── */}
+      {/* ── Meet Your Team Grid ────────────────────────────────────────── */}
       <div className="space-y-6 pt-6">
-        <h2 className="text-2xl font-black text-gray-900 tracking-tight px-2 text-center md:text-left uppercase">HOW DO YOU WANT TO START?</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <h2 className="text-2xl font-black text-gray-900 tracking-tight px-2 text-center md:text-left uppercase">Meet Your Dedicated Team</h2>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           
-          <Link href="/generator" className="group bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-2xl transition-all hover:-translate-y-1 hover:border-indigo-100 relative overflow-hidden flex flex-col items-center md:items-start text-center md:text-left">
-            <div className="absolute -right-4 -bottom-4 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-                <PenTool className="w-32 h-32" />
+          {[
+            { role: "Content Lead", desc: "Strategy & Briefs", emoji: "👩‍💼" },
+            { role: "Research Agent", desc: "Data & Market Scraping", emoji: "🕵️" },
+            { role: "Copywriter", desc: "Persuasive Hooks", emoji: "✍️" },
+            { role: "SEO Expert", desc: "Discoverability", emoji: "🔍" },
+            { role: "Visual Designer", desc: "Image Prompts", emoji: "🎨" },
+            { role: "QC Auditor", desc: "Fact Checking", emoji: "✅" },
+            { role: "Distribution Lead", desc: "Publishing", emoji: "🚀" }
+          ].map((agent, i) => (
+             <div key={i} className="bg-white p-5 rounded-[2rem] border border-gray-100 shadow-sm flex flex-col items-center text-center hover:border-indigo-100 hover:shadow-lg transition-all">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center mb-4 text-2xl">
+                    {agent.emoji}
+                </div>
+                <h3 className="text-sm font-black text-gray-900 mb-1">{agent.role}</h3>
+                <p className="text-[10px] text-gray-500 font-bold uppercase">{agent.desc}</p>
+             </div>
+          ))}
+
+          <Link href="/studio" className="bg-gradient-to-br from-indigo-500 to-fuchsia-600 p-5 rounded-[2rem] shadow-sm flex flex-col items-center justify-center text-center group hover:-translate-y-1 hover:shadow-xl transition-all h-full">
+            <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center mb-4 text-white">
+                <Sparkles className="w-6 h-6" />
             </div>
-            <div className="w-16 h-16 rounded-3xl bg-indigo-50 flex items-center justify-center mb-6 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-500 shadow-sm">
-              <span className="text-3xl">💡</span>
-            </div>
-            <h3 className="text-xl font-black text-gray-900 mb-2 group-hover:text-indigo-600 transition-colors">I have a topic idea</h3>
-            <p className="text-sm text-gray-500 font-medium leading-relaxed mb-6">Enter a topic and generate a full week of optimized content in multiple languages.</p>
-            <div className="mt-auto flex items-center gap-2 text-indigo-600 font-bold text-sm">
-                Go to Content Generator <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </div>
+            <h3 className="text-sm font-black text-white mb-1">Enter Studio</h3>
+            <p className="text-[10px] text-white/70 font-bold uppercase transition-transform group-hover:translate-x-1">Start Campaign →</p>
           </Link>
           
-          <Link href="/repurpose" className="group bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-2xl transition-all hover:-translate-y-1 hover:border-emerald-100 relative overflow-hidden flex flex-col items-center md:items-start text-center md:text-left">
-            <div className="absolute -right-4 -bottom-4 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-                <Youtube className="w-32 h-32" />
-            </div>
-            <div className="w-16 h-16 rounded-3xl bg-emerald-50 flex items-center justify-center mb-6 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-500 shadow-sm">
-              <span className="text-3xl">🎥</span>
-            </div>
-            <h3 className="text-xl font-black text-gray-900 mb-2 group-hover:text-emerald-600 transition-colors">I have a YouTube/URL</h3>
-            <p className="text-sm text-gray-500 font-medium leading-relaxed mb-6">Transform existing videos or articles into fresh viral social media posts instantly.</p>
-            <div className="mt-auto flex items-center gap-2 text-emerald-600 font-bold text-sm">
-                Go to Repurpose Source <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </div>
-          </Link>
-          
-          <Link href="/templates" className="group bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-2xl transition-all hover:-translate-y-1 hover:border-amber-100 relative overflow-hidden flex flex-col items-center md:items-start text-center md:text-left">
-            <div className="absolute -right-4 -bottom-4 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-                <LayoutTemplate className="w-32 h-32" />
-            </div>
-            <div className="w-16 h-16 rounded-3xl bg-amber-50 flex items-center justify-center mb-6 group-hover:bg-amber-600 group-hover:text-white transition-all duration-500 shadow-sm">
-              <span className="text-3xl">📋</span>
-            </div>
-            <h3 className="text-xl font-black text-gray-900 mb-2 group-hover:text-amber-600 transition-colors">Use a proven template</h3>
-            <p className="text-sm text-gray-500 font-medium leading-relaxed mb-6">Access battle-tested real estate scripts, carousels, and frameworks that covert.</p>
-            <div className="mt-auto flex items-center gap-2 text-amber-600 font-bold text-sm">
-                Go to Real Estate Templates <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </div>
-          </Link>
         </div>
 
         {/* ── AutoPilot Banner ────────────────────────────────────────────── */}

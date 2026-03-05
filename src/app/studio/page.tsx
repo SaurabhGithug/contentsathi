@@ -79,13 +79,13 @@ export default function AgenticOrchestrator() {
     const fetchData = async () => {
       try {
         // Fetch Memory
-        const memoryRes = await fetch("/api/admin/agentic/chat");
+        const memoryRes = await fetch("/api/studio/chat");
         if (memoryRes.ok) {
           const data = await memoryRes.json();
           if (coreMemory === "") setCoreMemory(data.memory || "");
         }
         // Fetch background queue
-        const tasksRes = await fetch("/api/admin/agentic/tasks");
+        const tasksRes = await fetch("/api/studio/tasks");
         if (tasksRes.ok) {
           const tData = await tasksRes.json();
           setTasks(tData.tasks || []);
@@ -111,7 +111,7 @@ export default function AgenticOrchestrator() {
     setIsChatLoading(true);
 
     try {
-      const res = await fetch("/api/admin/agentic/chat", {
+      const res = await fetch("/api/studio/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: msg }),
@@ -149,7 +149,7 @@ export default function AgenticOrchestrator() {
   const saveMemory = async () => {
     setIsSavingMemory(true);
     try {
-      await fetch("/api/admin/agentic/chat", {
+      await fetch("/api/studio/chat", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ memory: editedMemory }),
@@ -172,7 +172,7 @@ export default function AgenticOrchestrator() {
     }
     setIsStartingRun(true);
     try {
-      const res = await fetch("/api/admin/agentic/tasks", {
+      const res = await fetch("/api/studio/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ goal: newRunGoal }),
@@ -201,13 +201,13 @@ export default function AgenticOrchestrator() {
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/20 border border-indigo-400/30 backdrop-blur-md mb-4">
               <BrainCircuit className="w-4 h-4 text-indigo-300 animate-pulse" />
-              <span className="text-[10px] font-black tracking-widest text-indigo-100 uppercase">Fully Autonomous Agency Brain</span>
+              <span className="text-[10px] font-black tracking-widest text-indigo-100 uppercase">Fully Autonomous Agency Team</span>
             </div>
             <h1 className="text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight mb-3">
-              Gravity <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-fuchsia-300 to-indigo-300">Claw</span>
+              Content <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-fuchsia-300 to-indigo-300">Studio</span>
             </h1>
             <p className="text-indigo-100/90 font-medium text-sm max-w-xl">
-              Tell me your goal via WhatsApp or Web. I will autonomously run deep competitor analysis, locate growth angles, and generate lead-optimized real estate content completely independent of you.
+              Tell your Content Lead what you want to achieve. The 7-agent team will autonomously run deep research, create briefs, design images, and generate ready-to-publish content across your channels.
             </p>
           </div>
 
