@@ -10,7 +10,9 @@ function createPrismaClient() {
 
   const pool = new pg.Pool({ 
     connectionString: url,
-    // Add connection pooling settings if needed for production
+    max: process.env.DATABASE_MAX_CONN ? parseInt(process.env.DATABASE_MAX_CONN, 10) : 20, // Limit connections per serverless instance
+    idleTimeoutMillis: 15000,     // Close idle connections aggressively after 15s to save DB resources
+    connectionTimeoutMillis: 5000 // Error quickly (5s) if we cannot connect vs waiting infinitely
   });
   const adapter = new PrismaPg(pool);
   
