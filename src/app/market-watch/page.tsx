@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   TrendingUp, Zap, Shield, Target, BrainCircuit, RefreshCw,
   AlertTriangle, CheckCircle2, Clock, Loader2, Swords, Sparkles,
-  BarChart3, MessageCircle, BookOpen, ChevronRight, Eye
+  BarChart3, MessageCircle, BookOpen, ChevronRight, Eye, Play, Pause
 } from "lucide-react";
 import toast from "react-hot-toast";
+import MarkdownContent from "@/components/MarkdownContent";
+import Link from "next/link";
 
 type BattleCard = {
   id: string;
@@ -35,60 +37,111 @@ type ScanResult = {
 };
 
 const CORRIDORS = ["Wardha Road", "Besa", "MIHAN", "Ring Road", "Hingna Road"];
+const AUTO_SCAN_INTERVAL = 6 * 60 * 60 * 1000; // 6 hours in ms
 
 const URGENCY_COLORS: Record<string, string> = {
-  high: "bg-red-100 text-red-700 border-red-200",
+  high:   "bg-red-100 text-red-700 border-red-200",
   medium: "bg-amber-100 text-amber-700 border-amber-200",
-  low: "bg-green-100 text-green-700 border-green-200"
+  low:    "bg-green-100 text-green-700 border-green-200",
 };
 
 export default function MarketWatchPage() {
-  const [activeTab, setActiveTab] = useState<"hunt" | "battle_cards" | "improve">("hunt");
-  const [isScanning, setIsScanning] = useState(false);
-  const [isImproving, setIsImproving] = useState(false);
-  const [lastScan, setLastScan] = useState<ScanResult | null>(null);
-  const [battleCards, setBattleCards] = useState<BattleCard[]>([]);
+  const [activeTab, setActiveTab]         = useState<"hunt" | "battle_cards" | "improve">("hunt");
+  const [isScanning, setIsScanning]       = useState(false);
+  const [isImproving, setIsImproving]     = useState(false);
+  const [lastScan, setLastScan]           = useState<ScanResult | null>(null);
+  const [battleCards, setBattleCards]     = useState<BattleCard[]>([]);
   const [selectedCorridor, setSelectedCorridor] = useState("all");
-  const [improvements, setImprovements] = useState<any>(null);
+  const [improvements, setImprovements]   = useState<any>(null);
+  const [isAutoMode, setIsAutoMode]       = useState(true);
+  const [nextScanIn, setNextScanIn]       = useState<number | null>(null); // seconds
+  const autoTimerRef    = useRef<ReturnType<typeof setInterval> | null>(null);
+  const countdownRef    = useRef<ReturnType<typeof setInterval> | null>(null);
+  const resetCountdownRef = useRef<() => void>(() => {});
 
   const fetchBattleCards = useCallback(async () => {
     try {
-      const res = await fetch("/api/generated-assets?tags=battle_card&limit=20");
+      const res = await fetch("/api/generated-assets?tags=battle_card");
       if (res.ok) {
         const data = await res.json();
-        setBattleCards(data.assets || []);
+        setBattleCards((data.assets || []).filter((a: BattleCard) =>
+          a.tags?.includes("battle_card")
+        ));
       }
     } catch { /* silent */ }
   }, []);
 
   useEffect(() => { fetchBattleCards(); }, [fetchBattleCards]);
 
-  const runHunterScan = async () => {
+  // -- Core scan function (uses the session-aware endpoint) -------------------
+  const runHunterScan = useCallback(async (isAuto = false) => {
+    if (isScanning) return;
     setIsScanning(true);
     try {
-      const res = await fetch("/api/cron/market-watch", {
-        method: "GET",
-        headers: { 
-          Authorization: `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET || ""}`,
-          "x-manual-trigger": "true"
-        }
-      });
+      const res = await fetch("/api/market-watch/hunt", { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Scan failed");
       setLastScan(data);
-      toast.success("🔍 Hunter scan complete! Battle card drafted.");
-      fetchBattleCards();
+      toast.success(isAuto
+        ? "🤖 Autonomous scan complete! Battle card drafted."
+        : "🔍 Research Specialist: scan complete! Battle card drafted."
+      );
+      await fetchBattleCards();
+      // Switch to Battle Cards tab automatically on success
+      setActiveTab("battle_cards");
+      // Reset countdown for next auto scan
+      resetCountdownRef.current();
     } catch (e: any) {
       toast.error(e.message || "Scan failed");
     } finally {
       setIsScanning(false);
     }
+  }, [isScanning, fetchBattleCards]);
+
+  // -- Autonomous mode: run scan every 6 hours --------------------------------
+  const resetCountdown = useCallback(() => {
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    let remaining = AUTO_SCAN_INTERVAL / 1000;
+    setNextScanIn(remaining);
+    countdownRef.current = setInterval(() => {
+      remaining -= 1;
+      if (remaining <= 0) remaining = AUTO_SCAN_INTERVAL / 1000;
+      setNextScanIn(remaining);
+    }, 1000);
+  }, []);
+
+  // Keep the ref in sync so runHunterScan can call it without being in its dep array
+  resetCountdownRef.current = resetCountdown;
+
+  useEffect(() => {
+    if (isAutoMode) {
+      // Run an initial check on mount (but not immediately if there are existing cards)
+      resetCountdown();
+      autoTimerRef.current = setInterval(() => {
+        runHunterScan(true);
+      }, AUTO_SCAN_INTERVAL);
+    } else {
+      if (autoTimerRef.current)  clearInterval(autoTimerRef.current);
+      if (countdownRef.current)  clearInterval(countdownRef.current);
+      setNextScanIn(null);
+    }
+    return () => {
+      if (autoTimerRef.current)  clearInterval(autoTimerRef.current);
+      if (countdownRef.current)  clearInterval(countdownRef.current);
+    };
+  }, [isAutoMode, runHunterScan, resetCountdown]);
+
+  const formatCountdown = (secs: number) => {
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    return `${h}h ${m.toString().padStart(2, "0")}m ${s.toString().padStart(2, "0")}s`;
   };
 
   const runSelfImprove = async () => {
     setIsImproving(true);
     try {
-      const res = await fetch("/api/cron/self-improve", { method: "POST" });
+      const res  = await fetch("/api/cron/self-improve", { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed");
       setImprovements(data);
@@ -103,37 +156,72 @@ export default function MarketWatchPage() {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
-      {/* ── Header ─────────────────────────────────────────────── */}
+      {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center shadow-md shadow-red-100">
-              <Swords className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center shadow-md shadow-blue-100">
+              🕵️
             </div>
-            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Market Watch</h1>
+            <div>
+              <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Market Watch</h1>
+              <p className="text-[10px] font-black uppercase tracking-widest text-blue-500">Research Specialist · Hunter Mode</p>
+            </div>
           </div>
           <p className="text-gray-500 font-medium ml-[52px]">
-            Hunter Agent scans Nagpur competitors every 6h. Auto-drafts Battle Cards. Sends WhatsApp alerts.
+            Your Research Specialist autonomously scans Nagpur competitor landscape, finds content gaps, and drafts Battle Cards.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-2xl text-xs font-black text-green-700">
-            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            Auto-scan every 6h
-          </div>
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Autonomous Mode Toggle */}
           <button
-            onClick={runHunterScan}
+            onClick={() => setIsAutoMode(v => !v)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-black border transition-all ${
+              isAutoMode
+                ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                : "bg-gray-50 border-gray-200 text-gray-500"
+            }`}
+          >
+            {isAutoMode ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
+            {isAutoMode ? "Autonomous: ON" : "Autonomous: OFF"}
+          </button>
+
+          {isAutoMode && nextScanIn !== null && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-full text-[10px] font-black text-blue-600">
+              <Clock className="w-3 h-3" />
+              Next scan in {formatCountdown(nextScanIn)}
+            </div>
+          )}
+
+          <button
+            onClick={() => runHunterScan(false)}
             disabled={isScanning}
             className="flex items-center gap-2 px-5 py-2.5 bg-gray-900 hover:bg-black text-white text-sm font-black rounded-2xl shadow-md transition-all disabled:opacity-50"
           >
             {isScanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4 fill-white" />}
-            {isScanning ? "Hunting..." : "Run Hunter Now"}
+            {isScanning ? "Hunting..." : "Deploy Now"}
           </button>
         </div>
       </div>
 
-      {/* ── Live Scan Result Banner ──────────────────────────────── */}
+      {/* ── Agent Attribution Banner ───────────────────────────────────── */}
+      <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-100 rounded-3xl px-6 py-4 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center text-lg shadow-md">🕵️</div>
+          <div>
+            <p className="text-xs font-black uppercase tracking-widest text-blue-500 mb-0.5">Running Agent</p>
+            <p className="text-sm font-black text-gray-900">Research Specialist · Market Intelligence & Competitor Analysis</p>
+            <p className="text-[10px] text-gray-500 font-medium">Part of your 7-Agent Team · Autonomous mode scans every 6 hours</p>
+          </div>
+        </div>
+        <Link href="/agents?agent=research"
+          className="shrink-0 text-xs font-black text-blue-600 border border-blue-200 bg-white px-3 py-1.5 rounded-xl hover:bg-blue-50 transition-colors flex items-center gap-1">
+          View Agent Profile <ChevronRight className="w-3.5 h-3.5" />
+        </Link>
+      </div>
+
+      {/* ── Live Scan Result Banner ────────────────────────────────────── */}
       {lastScan && (
         <div className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-[2.5rem] p-6 animate-in slide-in-from-top duration-500">
           <div className="flex items-start justify-between gap-4">
@@ -155,7 +243,7 @@ export default function MarketWatchPage() {
               </div>
             </div>
             <div className="text-right shrink-0">
-              <p className="text-[10px] font-bold text-gray-400 uppercase">Battle Card</p>
+              <p className="text-[10px] font-bold text-gray-400 uppercase">Battle Card Drafted</p>
               <p className="text-xs font-black text-green-700">{lastScan.battle_card.title}</p>
               {lastScan.battle_card.whatsapp_alert_sent && (
                 <div className="flex items-center gap-1 justify-end mt-1">
@@ -168,7 +256,7 @@ export default function MarketWatchPage() {
         </div>
       )}
 
-      {/* ── Corridor Status Bar ──────────────────────────────────── */}
+      {/* ── Corridor Status Bar ──────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {CORRIDORS.map((c) => (
           <button
@@ -186,12 +274,12 @@ export default function MarketWatchPage() {
         ))}
       </div>
 
-      {/* ── Tabs ────────────────────────────────────────────────── */}
+      {/* ── Tabs ────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-2 bg-white border border-gray-100 rounded-2xl p-1.5 w-fit shadow-sm">
         {[
-          { id: "hunt", label: "Intelligence Feed", icon: Target },
+          { id: "hunt",         label: "Intelligence Feed",              icon: Target },
           { id: "battle_cards", label: `Battle Cards (${battleCards.length})`, icon: Swords },
-          { id: "improve", label: "Self-Improvement", icon: BrainCircuit },
+          { id: "improve",      label: "Self-Improvement",               icon: BrainCircuit },
         ].map((tab) => {
           const Icon = tab.icon;
           return (
@@ -211,7 +299,7 @@ export default function MarketWatchPage() {
         })}
       </div>
 
-      {/* ── Intelligence Feed Tab ──────────────────────────────── */}
+      {/* ── Intelligence Feed Tab ───────────────────────────────────── */}
       {activeTab === "hunt" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
@@ -245,10 +333,12 @@ export default function MarketWatchPage() {
               <div className="mt-6 flex items-center justify-between text-xs text-gray-400 border-t border-gray-50 pt-4">
                 <div className="flex items-center gap-1.5">
                   <Clock className="w-3 h-3" />
-                  Next auto-scan in ~{Math.floor(Math.random() * 6) + 1}h
+                  {isAutoMode && nextScanIn !== null
+                    ? `Auto-scan in ${formatCountdown(nextScanIn)}`
+                    : "Manual mode — click Deploy to scan"}
                 </div>
                 <button
-                  onClick={runHunterScan}
+                  onClick={() => runHunterScan(false)}
                   disabled={isScanning}
                   className="flex items-center gap-1 text-indigo-600 font-bold hover:text-indigo-700"
                 >
@@ -286,7 +376,7 @@ export default function MarketWatchPage() {
         </div>
       )}
 
-      {/* ── Battle Cards Tab ───────────────────────────────────── */}
+      {/* ── Battle Cards Tab ──────────────────────────────────────── */}
       {activeTab === "battle_cards" && (
         <div className="space-y-4">
           {battleCards.length === 0 ? (
@@ -296,15 +386,15 @@ export default function MarketWatchPage() {
               </div>
               <h3 className="text-xl font-black text-gray-900 mb-2">No Battle Cards Yet</h3>
               <p className="text-gray-500 text-sm font-medium mb-6">
-                Run the Hunter Agent to scan competitors and draft your first battle card.
+                Deploy the Research Specialist to scan competitors and draft your first battle card.
               </p>
               <button
-                onClick={runHunterScan}
+                onClick={() => runHunterScan(false)}
                 disabled={isScanning}
                 className="flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-2xl font-black text-sm mx-auto transition-all hover:bg-black shadow-lg"
               >
                 {isScanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4 fill-white" />}
-                Run Hunter Scan
+                Deploy Research Specialist
               </button>
             </div>
           ) : (
@@ -326,9 +416,10 @@ export default function MarketWatchPage() {
                     }`}>{card.status?.toUpperCase() || "DRAFT"}</span>
                   </div>
 
-                  <p className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-xl p-4 mb-4 border border-gray-100 line-clamp-4">
-                    {card.body}
-                  </p>
+                  {/* Render as markdown (may contain formatting) */}
+                  <div className="bg-gray-50 rounded-xl p-4 mb-4 border border-gray-100 max-h-40 overflow-y-auto custom-scrollbar">
+                    <MarkdownContent content={card.body} compact />
+                  </div>
 
                   {card.notes && (
                     <p className="text-xs text-gray-400 mb-4 flex items-center gap-1.5">
@@ -337,13 +428,13 @@ export default function MarketWatchPage() {
                   )}
 
                   <div className="flex items-center gap-2">
-                    <button className="flex-1 py-2 bg-gray-900 hover:bg-black text-white text-xs font-black rounded-xl transition-all">
+                    <Link href="/approvals" className="flex-1 py-2 bg-gray-900 hover:bg-black text-white text-xs font-black rounded-xl transition-all text-center">
                       <CheckCircle2 className="w-3.5 h-3.5 inline mr-1" />
                       Approve & Schedule
-                    </button>
-                    <button className="px-4 py-2 border border-gray-200 hover:bg-gray-50 text-xs font-bold text-gray-600 rounded-xl transition-all">
-                      Edit
-                    </button>
+                    </Link>
+                    <Link href="/library" className="px-4 py-2 border border-gray-200 hover:bg-gray-50 text-xs font-bold text-gray-600 rounded-xl transition-all">
+                      View in Library
+                    </Link>
                   </div>
                 </div>
               ))}
@@ -352,7 +443,7 @@ export default function MarketWatchPage() {
         </div>
       )}
 
-      {/* ── Self-Improvement Tab ───────────────────────────────── */}
+      {/* ── Self-Improvement Tab ─────────────────────────────────── */}
       {activeTab === "improve" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-white border border-gray-100 rounded-[2.5rem] p-8 shadow-sm">

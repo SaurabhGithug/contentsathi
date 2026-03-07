@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-03-05T11:53:26.045Z",
+  "last_updated": "2026-03-07T18:52:58.203Z",
   "corridors_tracked": [
     "Wardha Road Nagpur",
     "Besa Nagpur",
@@ -8,6 +8,15 @@
     "Hingna Road Nagpur"
   ],
   "scan_history": [
+    {
+      "timestamp": "2026-03-07T18:52:58.203Z",
+      "corridor": "MIHAN",
+      "gaps_found": [
+        "affordable housing trends",
+        "sustainability certifications"
+      ],
+      "battle_card_title": "Battle Card: RERA Trust vs Price War"
+    },
     {
       "timestamp": "2026-03-05T11:53:26.045Z",
       "corridor": "MIHAN",
@@ -75,6 +84,11 @@
     },
     {
       "timestamp": "2026-03-05T11:53:26.045Z",
+      "title": "Battle Card: RERA Trust vs Price War",
+      "corridor": "MIHAN"
+    },
+    {
+      "timestamp": "2026-03-07T18:52:58.203Z",
       "title": "Battle Card: RERA Trust vs Price War",
       "corridor": "MIHAN"
     }

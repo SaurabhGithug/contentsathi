@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import NextLink from "next/link";
 import {
   ChevronDown, ChevronUp, BrainCircuit, Search,
   PenTool, Tag, Image, ShieldCheck, Send,
@@ -31,18 +32,19 @@ const AGENTS = [
   {
     id: "research",
     role: "Research Specialist",
-    subtitle: "Market Intelligence & Competitor Analysis",
+    subtitle: "Market Intelligence, Competitor Analysis & Hunter Mode",
     emoji: "🕵️",
     color: "from-blue-500 to-cyan-600",
     bg: "bg-blue-50",
     border: "border-blue-100",
     pillColor: "bg-blue-100 text-blue-700",
-    description: "Deep-dives into market data, competitor content, and local real estate trends. Identifies content gaps and provides a proactive Research Brief.",
-    skills: ["GatherSources", "CompetitorAnalysis", "GapIdentification", "MarketDataScrape"],
-    outputs: ["Competitor audit", "3 proven angles", "Local market data", "Gap report"],
+    description: "Deep-dives into market data, competitor content, and local real estate trends. In Hunter Mode, autonomously scans 99acres, MagicBricks & Instagram every 6 hours and drafts Battle Cards.",
+    skills: ["GatherSources", "CompetitorAnalysis", "GapIdentification", "MarketDataScrape", "HunterMode", "BattleCardDraft"],
+    outputs: ["Competitor audit", "3 proven angles", "Local market data", "Gap report", "Battle Card (Hinglish + Marathi)"],
     metrics: { avgTime: "34s", successRate: "92%", revisionCount: 1 },
     sampleOutput: "Market Intel Summary:\n• Competitors using: 'Plot in Nagpur under 20L' hooks on Instagram\n• MISSED ANGLE: None are covering MIHAN expansion effect on North Nagpur\n• Data: Avg plot appreciation in Saraswati Nagri = 22% YoY (MagicBricks Q1)\n• GAP BRIEF for Content Lead: Diaspora investor angle underused — only 1 competitor posting in Hindi for NRIs",
-    dependencies: { needs: ["Campaign Brief"], provides: ["Research Data", "Gap Analysis"] },
+    dependencies: { needs: ["Campaign Brief"], provides: ["Research Data", "Gap Analysis", "Battle Card"] },
+    marketWatchLink: true,
   },
   {
     id: "copywriter",
@@ -188,6 +190,20 @@ function AgentCard({ agent, isExpanded, onToggle, isActive }: { agent: typeof AG
               <span key={i} className="text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 px-2 py-1 rounded-lg">{p}</span>
             ))}
           </div>
+
+          {/* Market Watch Hunter Mode CTA — Research Specialist only */}
+          {(agent as any).marketWatchLink && (
+            <div className="mx-6 mt-4 bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-100 rounded-2xl p-4 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-0.5">Hunter Mode · Autonomous</p>
+                <p className="text-xs font-bold text-gray-800">Scans 99acres, MagicBricks & Instagram every 6h · Drafts Battle Cards automatically</p>
+              </div>
+              <NextLink href="/market-watch"
+                className="shrink-0 ml-4 flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl transition-all shadow-md shadow-blue-200">
+                🕵️ Open Market Watch
+              </NextLink>
+            </div>
+          )}
 
           {/* Tabs */}
           <div className="flex gap-1 px-6 pt-2 pb-0">

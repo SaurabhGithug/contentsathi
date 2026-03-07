@@ -17,6 +17,7 @@ export async function GET(request: Request) {
     const platform = searchParams.get("platform");
     const type = searchParams.get("type");
     const search = searchParams.get("search");
+    const tagsParam = searchParams.get("tags");
     const goldenOnly = searchParams.get("golden") === "true";
 
     const where: any = { userId: user.id };
@@ -38,6 +39,12 @@ export async function GET(request: Request) {
 
     if (goldenOnly) {
       where.isGoldenExample = true;
+    }
+
+    if (tagsParam) {
+      // Split by comma in case multiple tags are requested (e.g. "?tags=battle_card,marathi")
+      const tagsArray = tagsParam.split(",").map(t => t.trim());
+      where.tags = { hasSome: tagsArray };
     }
 
     const assets = await prisma.generatedAsset.findMany({
