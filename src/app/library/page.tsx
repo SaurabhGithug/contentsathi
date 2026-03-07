@@ -106,7 +106,9 @@ function AssetCard({ asset, onDelete, onCopy, onStar }: {
 
         <div className="mt-1">
           {expanded ? (
-            <MarkdownContent content={asset.body} compact />
+            <div className="max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+              <MarkdownContent content={asset.body} compact />
+            </div>
           ) : (
             <MarkdownContent content={preview + (asset.body.length > 180 ? "..." : "")} compact />
           )}

@@ -293,7 +293,7 @@ export default function ApprovalsPage() {
                           {expandedId === item.id ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                         </button>
                         {expandedId === item.id && (
-                          <div className="bg-white border border-gray-200 rounded-2xl p-5 mt-2">
+                          <div className="bg-white border border-gray-200 rounded-2xl p-5 mt-2 max-h-60 overflow-y-auto pr-3 custom-scrollbar">
                             <MarkdownContent content={item.fullContent || ""} />
                           </div>
                         )}
