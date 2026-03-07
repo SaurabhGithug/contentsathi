@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import MarkdownContent from "@/components/MarkdownContent";
 import {
   CheckCircle2, XCircle, RefreshCw, Eye, MessageSquare,
   TrendingUp, RotateCcw, Sparkles, Edit3, AlertTriangle,
@@ -253,7 +254,7 @@ export default function ApprovalsPage() {
                         </span>
                       )}
                     </div>
-                    <p className="text-gray-800 font-medium leading-relaxed">{item.preview}</p>
+                    <MarkdownContent content={item.preview} compact />
 
                     {/* Agent-to-Agent Communications Log */}
                     {item.agentMessages && item.agentMessages.length > 0 && (
@@ -292,8 +293,8 @@ export default function ApprovalsPage() {
                           {expandedId === item.id ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                         </button>
                         {expandedId === item.id && (
-                          <div className="bg-white border border-gray-200 rounded-2xl p-4 mt-2 text-sm text-gray-700 font-medium whitespace-pre-wrap leading-relaxed">
-                            {item.fullContent}
+                          <div className="bg-white border border-gray-200 rounded-2xl p-5 mt-2">
+                            <MarkdownContent content={item.fullContent || ""} />
                           </div>
                         )}
                       </>

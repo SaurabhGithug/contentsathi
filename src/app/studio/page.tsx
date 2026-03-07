@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import MarkdownContent from "@/components/MarkdownContent";
 import {
   BrainCircuit,
   Bot,
@@ -378,9 +379,12 @@ export default function AgenticOrchestrator() {
                               <h5 className="flex items-center gap-1.5 text-[10px] font-black text-fuchsia-600 uppercase tracking-widest mb-2 border-b pb-1">
                                 <TrendingUp className="w-3.5 h-3.5" /> Deep Research Insight
                               </h5>
-                              <p className="text-xs text-gray-600 font-medium leading-relaxed bg-fuchsia-50/50 p-3 rounded-xl border border-fuchsia-100">
-                                {task.deepResearchData.insights?.substring(0, 150)}...
-                              </p>
+                              <div className="bg-fuchsia-50/50 p-3 rounded-xl border border-fuchsia-100">
+                                <MarkdownContent
+                                  content={task.deepResearchData.insights?.substring(0, 600) || ""}
+                                  compact
+                                />
+                              </div>
                             </div>
                           )}
                           {task.generatedContent && (
@@ -388,11 +392,11 @@ export default function AgenticOrchestrator() {
                               <h5 className="flex items-center gap-1.5 text-[10px] font-black text-green-600 uppercase tracking-widest mb-2 border-b pb-1">
                                 <Target className="w-3.5 h-3.5" /> Lead Generation Outputs
                               </h5>
-                              <div className="flex flex-col gap-2">
+                              <div className="flex flex-col gap-3">
                                 {task.generatedContent.map((c: any) => (
-                                  <div key={c.id} className="bg-green-50 border border-green-200 p-3 rounded-xl">
-                                    <span className="text-[9px] font-black uppercase text-green-600 bg-white px-2 py-0.5 rounded shadow-sm border border-green-100 mb-1 inline-block">{c.platform}</span>
-                                    <p className="text-xs text-gray-800 font-medium leading-snug">{c.text.substring(0, 80)}...</p>
+                                  <div key={c.id} className="bg-green-50 border border-green-200 p-4 rounded-2xl">
+                                    <span className="text-[9px] font-black uppercase text-green-700 bg-white px-2 py-0.5 rounded shadow-sm border border-green-100 mb-2 inline-block">{c.platform}</span>
+                                    <MarkdownContent content={c.text || ""} compact />
                                   </div>
                                 ))}
                               </div>

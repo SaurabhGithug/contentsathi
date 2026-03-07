@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import MarkdownContent from "@/components/MarkdownContent";
 import {
   Search, Filter, RefreshCw, PackageOpen, Copy,
   Trash2, Star, Instagram, Linkedin, Youtube,
@@ -103,14 +104,17 @@ function AssetCard({ asset, onDelete, onCopy, onStar }: {
           <h3 className="font-black text-gray-900 text-sm mb-2 leading-tight">{asset.title}</h3>
         )}
 
-        <p className="text-sm text-gray-600 font-medium leading-relaxed">
-          {expanded ? asset.body : preview}
-          {asset.body.length > 180 && !expanded && "..."}
-        </p>
+        <div className="mt-1">
+          {expanded ? (
+            <MarkdownContent content={asset.body} compact />
+          ) : (
+            <MarkdownContent content={preview + (asset.body.length > 180 ? "..." : "")} compact />
+          )}
+        </div>
 
         {asset.body.length > 180 && (
           <button onClick={() => setExpanded(!expanded)}
-            className="mt-2 text-xs font-black text-indigo-500 hover:text-indigo-700 transition-colors flex items-center gap-1">
+            className="mt-1 text-xs font-black text-indigo-500 hover:text-indigo-700 transition-colors flex items-center gap-1">
             {expanded ? "Show less" : "Read full content"}
             <ChevronDown className={`w-3.5 h-3.5 transition-transform ${expanded ? "rotate-180" : ""}`} />
           </button>
