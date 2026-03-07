@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   ChevronDown, ChevronUp, BrainCircuit, Search,
   PenTool, Tag, Image, ShieldCheck, Send,
@@ -243,20 +244,18 @@ function AgentCard({ agent, isExpanded, onToggle, isActive }: { agent: typeof AG
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
-export default function AgentsPage() {
+function AgentsContent() {
   const [expandedId, setExpandedId] = useState<string | null>("content-lead");
   const [activeAgentId] = useState<string | null>(null); // In real version: derive from active task
 
+  const searchParams = useSearchParams();
+  const agentParam = searchParams.get("agent");
+
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const agentParam = params.get("agent");
     if (agentParam && AGENTS.some(a => a.id === agentParam)) {
       setExpandedId(agentParam);
-      // Clean up URL without triggering reload
-      window.history.replaceState({}, "", "/agents");
     }
-  }, []);
+  }, [agentParam]);
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-24 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -314,5 +313,14 @@ export default function AgentsPage() {
       </div>
 
     </div>
+  );
+}
+
+// ─── Main Page Wrapper ────────────────────────────────────────────────────────
+export default function AgentsPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center py-20"><span className="animate-pulse text-indigo-500 font-bold">Loading agent specs...</span></div>}>
+      <AgentsContent />
+    </Suspense>
   );
 }
