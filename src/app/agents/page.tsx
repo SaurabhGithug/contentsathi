@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ChevronDown, ChevronUp, BrainCircuit, Search,
   PenTool, Tag, Image, ShieldCheck, Send,
@@ -247,6 +247,16 @@ function AgentCard({ agent, isExpanded, onToggle, isActive }: { agent: typeof AG
 export default function AgentsPage() {
   const [expandedId, setExpandedId] = useState<string | null>("content-lead");
   const [activeAgentId] = useState<string | null>(null); // In real version: derive from active task
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const agentParam = params.get("agent");
+    if (agentParam && AGENTS.some(a => a.id === agentParam)) {
+      setExpandedId(agentParam);
+      // Clean up URL without triggering reload
+      window.history.replaceState({}, "", "/agents");
+    }
+  }, []);
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-24 animate-in fade-in slide-in-from-bottom-4 duration-700">

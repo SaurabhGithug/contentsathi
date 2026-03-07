@@ -240,22 +240,22 @@ export default function AgencyHQPage() {
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
-              { role: "Content Lead",     emoji: "👩‍💼", status: "Standby",    color: "violet" },
-              { role: "Research Agent",   emoji: "🕵️",  status: activeTasks.length > 0 ? "Active" : "Standby", color: "blue" },
-              { role: "Copywriter",       emoji: "✍️",   status: "Standby",    color: "cyan" },
-              { role: "SEO Expert",       emoji: "🔍",  status: "Standby",    color: "teal" },
-              { role: "Visual Designer",  emoji: "🎨",  status: "Standby",    color: "amber" },
-              { role: "QC Auditor",       emoji: "✅",   status: "Standby",    color: "emerald" },
-              { role: "Distribution",     emoji: "🚀",   status: "Standby",    color: "rose" },
+              { id: "content-lead", role: "Content Lead",     emoji: "👩‍💼", status: "Standby",    color: "violet" },
+              { id: "research",     role: "Research Agent",   emoji: "🕵️",  status: activeTasks.length > 0 ? "Active" : "Standby", color: "blue" },
+              { id: "copywriter",   role: "Copywriter",       emoji: "✍️",   status: "Standby",    color: "cyan" },
+              { id: "seo",          role: "SEO Expert",       emoji: "🔍",  status: "Standby",    color: "teal" },
+              { id: "visual",       role: "Visual Designer",  emoji: "🎨",  status: "Standby",    color: "amber" },
+              { id: "qc",           role: "QC Auditor",       emoji: "✅",   status: "Standby",    color: "emerald" },
+              { id: "distribution", role: "Distribution",     emoji: "🚀",   status: "Standby",    color: "rose" },
             ].map((agent) => (
-              <div key={agent.role} className="bg-gray-50 rounded-2xl p-3 text-center hover:bg-indigo-50 hover:border-indigo-100 border border-transparent transition-all">
-                <div className="text-2xl mb-2">{agent.emoji}</div>
+              <Link key={agent.role} href={`/agents?agent=${agent.id}`} className="bg-gray-50 rounded-2xl p-3 text-center hover:bg-indigo-50 hover:border-indigo-100 border border-transparent transition-all group">
+                <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">{agent.emoji}</div>
                 <p className="text-[10px] font-black text-gray-800 leading-tight">{agent.role}</p>
-                <div className={`mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${agent.status === "Active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-400"}`}>
+                <div className={`mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${agent.status === "Active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-400 group-hover:bg-white group-hover:text-indigo-500"}`}>
                   {agent.status === "Active" && <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />}
                   {agent.status}
                 </div>
-              </div>
+              </Link>
             ))}
             <Link href="/agents" className="bg-gradient-to-br from-indigo-500 to-fuchsia-600 rounded-2xl p-3 text-center flex flex-col items-center justify-center cursor-pointer hover:-translate-y-0.5 transition-all">
               <Sparkles className="w-6 h-6 text-white mb-2" />
