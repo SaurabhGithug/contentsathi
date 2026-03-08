@@ -107,6 +107,7 @@ model User {
   postAnalytics      PostAnalytics[]
   whatsappSequences  WhatsAppSequence[]
   agentTasks         AgentTask[]
+  projectAssets      ProjectAsset[]
 
   @@map("users")
 }
@@ -549,4 +550,28 @@ model Waitlist {
 
   @@index([email])
   @@map("waitlist")
+}
+
+// Project Media & Knowledge Base
+model ProjectAsset {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String                          // e.g. "Saraswati Nagri Brochure"
+  description String?                         // optional context for the AI
+  fileType    String                          // "image" | "video" | "brochure" | "location_map"
+  mimeType    String                          // e.g. "image/jpeg", "application/pdf"
+  fileUrl     String                          // public URL or relative path
+  fileSize    Int?                            // bytes
+  corridor    String?                         // "Wardha Road", "MIHAN", etc.
+  projectName String?                         // e.g. "Saraswati Nagri Phase 2"
+  useInChat   Boolean  @default(true)         // attach to WhatsApp / chat messages
+  useAsKnowledge Boolean @default(true)       // feed into AI knowledge base
+  tags        String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, fileType])
+  @@index([userId, projectName])
+  @@map("project_assets")
 }

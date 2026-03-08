@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import toast from "react-hot-toast";
 import { 
   User, 
@@ -26,7 +26,15 @@ import {
   Clock,
   TrendingUp,
   AlertCircle,
-  Shield
+  Shield,
+  ImageIcon,
+  FileText,
+  Video,
+  MapPin,
+  Upload,
+  Eye,
+  ToggleLeft,
+  ToggleRight,
 } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
@@ -431,6 +439,14 @@ function SettingsContent() {
               }`}
             >
               <TrendingUp className="w-5 h-5 text-violet-500" /> AI Engine
+            </button>
+            <button 
+              onClick={() => handleTabChange("project-media")}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                activeTab === "project-media" ? "bg-emerald-50 text-emerald-700 shadow-sm" : "text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              <ImageIcon className="w-5 h-5 text-emerald-500" /> Project Media
             </button>
           </nav>
         </aside>
@@ -1057,7 +1073,7 @@ function SettingsContent() {
                 </div>
             </div>
           )}
-
+          {activeTab === "project-media" && <ProjectMediaTab />}
 
           {activeTab === "ai-engine" && (
             <div className="p-8 animate-in fade-in slide-in-from-right-2">
@@ -1217,6 +1233,299 @@ function SettingsContent() {
       )}
     </div>
   );
+
+  function ProjectMediaTab() {
+    const [projectAssets, setProjectAssets] = useState<any[]>([]);
+    const [loadingAssets, setLoadingAssets] = useState(true);
+    const [uploading, setUploading] = useState(false);
+    const [dragOver, setDragOver] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    // Form state
+    const [assetName, setAssetName] = useState("");
+    const [assetDesc, setAssetDesc] = useState("");
+    const [assetType, setAssetType] = useState("image");
+    const [assetCorridor, setAssetCorridor] = useState("");
+    const [assetProject, setAssetProject] = useState("");
+    const [useInChat, setUseInChat] = useState(true);
+    const [useAsKnowledge, setUseAsKnowledge] = useState(true);
+    const [pendingFile, setPendingFile] = useState<File | null>(null);
+
+    const CORRIDORS = ["Wardha Road", "Besa", "MIHAN", "Ring Road", "Hingna Road", "Saraswati Nagri", "Godni", "Other"];
+    const FILE_TYPES = [
+      { id: "image",        label: "Site/Dev Image", icon: ImageIcon,  accept: "image/*" },
+      { id: "location_map", label: "Location Map",   icon: MapPin,     accept: "image/*" },
+      { id: "brochure",     label: "Brochure (PDF)", icon: FileText,   accept: ".pdf" },
+      { id: "video",        label: "Video",          icon: Video,      accept: "video/*" },
+    ];
+
+    const fetchProjectAssets = useCallback(async () => {
+      setLoadingAssets(true);
+      try {
+        const res = await fetch("/api/project-assets");
+        if (res.ok) {
+          const data = await res.json();
+          setProjectAssets(data.assets || []);
+        }
+      } catch {} finally { setLoadingAssets(false); }
+    }, []);
+
+    useEffect(() => { fetchProjectAssets(); }, [fetchProjectAssets]);
+
+    const handleFilePick = (files: FileList | null) => {
+      if (!files?.length) return;
+      const f = files[0];
+      setPendingFile(f);
+      if (!assetName) setAssetName(f.name.replace(/\.[^.]+$/, ""));
+    };
+
+    const handleUpload = async () => {
+      if (!pendingFile || !assetName) { toast.error("File and name are required."); return; }
+      setUploading(true);
+      try {
+        const form = new FormData();
+        form.append("file", pendingFile);
+        form.append("name", assetName);
+        form.append("description", assetDesc);
+        form.append("fileType", assetType);
+        form.append("corridor", assetCorridor);
+        form.append("projectName", assetProject);
+        form.append("useInChat", String(useInChat));
+        form.append("useAsKnowledge", String(useAsKnowledge));
+
+        const res = await fetch("/api/project-assets", { method: "POST", body: form });
+        if (!res.ok) throw new Error((await res.json()).error || "Upload failed");
+        toast.success(`✅ "${assetName}" uploaded to Project Knowledge Base!`);
+        setPendingFile(null); setAssetName(""); setAssetDesc(""); setAssetCorridor(""); setAssetProject("");
+        fetchProjectAssets();
+      } catch (e: any) {
+        toast.error(e.message || "Upload failed");
+      } finally { setUploading(false); }
+    };
+
+    const handleDelete = async (id: string) => {
+      if (!confirm("Remove this asset?")) return;
+      await fetch(`/api/project-assets?id=${id}`, { method: "DELETE" });
+      setProjectAssets(prev => prev.filter(a => a.id !== id));
+      toast.success("Removed.");
+    };
+
+    const handleToggle = async (id: string, field: "useInChat" | "useAsKnowledge", current: boolean) => {
+      await fetch("/api/project-assets", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, [field]: !current }) });
+      setProjectAssets(prev => prev.map(a => a.id === id ? { ...a, [field]: !current } : a));
+    };
+
+    const TYPE_META: Record<string, { icon: any; color: string; label: string }> = {
+      image:        { icon: ImageIcon, color: "text-blue-500 bg-blue-50",    label: "Site Image" },
+      location_map: { icon: MapPin,    color: "text-emerald-500 bg-emerald-50", label: "Location Map" },
+      brochure:     { icon: FileText,  color: "text-orange-500 bg-orange-50",  label: "Brochure" },
+      video:        { icon: Video,     color: "text-purple-500 bg-purple-50",  label: "Video" },
+    };
+
+    return (
+      <div className="p-8 animate-in fade-in slide-in-from-right-2 space-y-8">
+        <div className="flex items-center gap-4 mb-2">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center">
+            <ImageIcon className="w-6 h-6 text-emerald-600" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-black text-gray-900">Project Media & Knowledge Base</h2>
+            <p className="text-sm text-gray-500 font-medium">Upload development images, location maps, brochures, and videos. Gravity Claw uses these directly in messages and as AI context.</p>
+          </div>
+        </div>
+
+        {/* Info Banner */}
+        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100 rounded-2xl p-4 flex items-start gap-3">
+          <div className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
+            <Zap className="w-4 h-4 text-emerald-600 fill-current" />
+          </div>
+          <div>
+            <p className="text-xs font-black text-emerald-800 uppercase tracking-wider mb-0.5">How This Works</p>
+            <p className="text-xs font-medium text-emerald-700 leading-relaxed">
+              <strong>Use in Chat:</strong> Share directly via WhatsApp or attach to generated posts. &nbsp;
+              <strong>Knowledge Base:</strong> Gravity Claw reads brochure text, image context, and location facts when generating content — so every post reflects your actual project, not generic copy.
+            </p>
+          </div>
+        </div>
+
+        {/* Upload Card */}
+        <div className="bg-white border border-gray-100 rounded-[2rem] p-6 shadow-sm space-y-5">
+          <h3 className="text-base font-black text-gray-900">Upload New Asset</h3>
+
+          {/* Drag & Drop Zone */}
+          <div
+            onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={e => { e.preventDefault(); setDragOver(false); handleFilePick(e.dataTransfer.files); }}
+            onClick={() => fileInputRef.current?.click()}
+            className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all ${
+              dragOver ? "border-emerald-400 bg-emerald-50" :
+              pendingFile ? "border-emerald-300 bg-emerald-50" :
+              "border-gray-200 hover:border-emerald-300 hover:bg-gray-50"
+            }`}
+          >
+            <input ref={fileInputRef} type="file" className="hidden"
+              accept={FILE_TYPES.find(t => t.id === assetType)?.accept || "*"}
+              onChange={e => handleFilePick(e.target.files)} />
+            <Upload className={`w-10 h-10 mx-auto mb-3 ${ pendingFile ? "text-emerald-500" : "text-gray-300" }`} />
+            {pendingFile ? (
+              <>
+                <p className="text-sm font-black text-emerald-700">{pendingFile.name}</p>
+                <p className="text-xs text-emerald-500 font-medium mt-1">{(pendingFile.size / 1024).toFixed(0)} KB · Click to change</p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-bold text-gray-600">Drag & drop or click to upload</p>
+                <p className="text-xs text-gray-400 font-medium mt-1">Images, PDFs, Videos — max 50 MB</p>
+              </>
+            )}
+          </div>
+
+          {/* Asset Type Pills */}
+          <div>
+            <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">Asset Type</label>
+            <div className="flex flex-wrap gap-2">
+              {FILE_TYPES.map(t => {
+                const Icon = t.icon;
+                return (
+                  <button key={t.id} onClick={() => setAssetType(t.id)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition-all ${
+                      assetType === t.id ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"
+                    }`}>
+                    <Icon className="w-3.5 h-3.5" />{t.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1">Asset Name *</label>
+              <input value={assetName} onChange={e => setAssetName(e.target.value)}
+                placeholder="e.g. Saraswati Nagri Phase 2 Brochure"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-emerald-400 outline-none" />
+            </div>
+            <div>
+              <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1">Project Name</label>
+              <input value={assetProject} onChange={e => setAssetProject(e.target.value)}
+                placeholder="e.g. Saraswati Nagri"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-emerald-400 outline-none" />
+            </div>
+            <div>
+              <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1">Corridor</label>
+              <select value={assetCorridor} onChange={e => setAssetCorridor(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-emerald-400 outline-none bg-white">
+                <option value="">Select corridor…</option>
+                {CORRIDORS.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1">Description / AI Context</label>
+              <input value={assetDesc} onChange={e => setAssetDesc(e.target.value)}
+                placeholder="e.g. Aerial drone shot showing Ring Road proximity"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-emerald-400 outline-none" />
+            </div>
+          </div>
+
+          {/* Toggles */}
+          <div className="flex flex-wrap gap-4">
+            <button onClick={() => setUseInChat(v => !v)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black border transition-all ${
+                useInChat ? "bg-green-50 border-green-200 text-green-700" : "bg-gray-50 border-gray-200 text-gray-400"
+              }`}>
+              {useInChat ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+              Use in Chat / WhatsApp
+            </button>
+            <button onClick={() => setUseAsKnowledge(v => !v)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black border transition-all ${
+                useAsKnowledge ? "bg-violet-50 border-violet-200 text-violet-700" : "bg-gray-50 border-gray-200 text-gray-400"
+              }`}>
+              {useAsKnowledge ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+              Feed to AI Knowledge Base
+            </button>
+          </div>
+
+          <button onClick={handleUpload} disabled={!pendingFile || !assetName || uploading}
+            className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl shadow-lg shadow-emerald-100 transition-all disabled:opacity-50">
+            {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+            {uploading ? "Uploading & Indexing…" : "Upload to Knowledge Base"}
+          </button>
+        </div>
+
+        {/* Asset Gallery */}
+        <div>
+          <h3 className="text-base font-black text-gray-900 mb-4">
+            Project Assets
+            <span className="ml-2 text-xs font-black text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{projectAssets.length}</span>
+          </h3>
+          {loadingAssets ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 text-gray-300 animate-spin" />
+            </div>
+          ) : projectAssets.length === 0 ? (
+            <div className="bg-gray-50 border border-dashed border-gray-200 rounded-2xl p-12 text-center">
+              <ImageIcon className="w-12 h-12 text-gray-200 mx-auto mb-4" />
+              <p className="text-sm font-bold text-gray-400">No project assets yet.</p>
+              <p className="text-xs text-gray-400 font-medium mt-1">Upload site images, brochures, or videos above.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {projectAssets.map(asset => {
+                const tm = TYPE_META[asset.fileType] || TYPE_META.image;
+                const Icon = tm.icon;
+                const isImage = ["image", "location_map"].includes(asset.fileType);
+                return (
+                  <div key={asset.id} className="bg-white border border-gray-100 rounded-[1.5rem] overflow-hidden shadow-sm hover:shadow-md transition-all group">
+                    {/* Preview */}
+                    {isImage && asset.fileUrl ? (
+                      <div className="h-36 bg-gray-50 overflow-hidden">
+                        <img src={asset.fileUrl} alt={asset.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      </div>
+                    ) : (
+                      <div className={`h-36 flex items-center justify-center ${tm.color}`}>
+                        <Icon className="w-14 h-14 opacity-30" />
+                      </div>
+                    )}
+                    <div className="p-4">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div>
+                          <p className="text-sm font-black text-gray-900 leading-tight">{asset.name}</p>
+                          {asset.projectName && <p className="text-[10px] text-gray-400 font-bold mt-0.5">{asset.projectName} · {asset.corridor || ""}</p>}
+                        </div>
+                        <span className={`shrink-0 text-[9px] font-black px-2 py-0.5 rounded-full border ${tm.color}`}>{tm.label}</span>
+                      </div>
+                      {asset.description && (
+                        <p className="text-[11px] text-gray-500 font-medium mb-3 line-clamp-2">{asset.description}</p>
+                      )}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <button onClick={() => handleToggle(asset.id, "useInChat", asset.useInChat)}
+                          className={`text-[10px] font-black px-2.5 py-1 rounded-full border transition-all ${
+                            asset.useInChat ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-50 text-gray-400 border-gray-200"
+                          }`}>💬 Chat</button>
+                        <button onClick={() => handleToggle(asset.id, "useAsKnowledge", asset.useAsKnowledge)}
+                          className={`text-[10px] font-black px-2.5 py-1 rounded-full border transition-all ${
+                            asset.useAsKnowledge ? "bg-violet-50 text-violet-700 border-violet-200" : "bg-gray-50 text-gray-400 border-gray-200"
+                          }`}>🧠 AI Brain</button>
+                        {asset.fileUrl && (
+                          <a href={asset.fileUrl} target="_blank" rel="noreferrer"
+                            className="text-[10px] font-black px-2.5 py-1 rounded-full border bg-blue-50 text-blue-600 border-blue-200">👁 View</a>
+                        )}
+                        <button onClick={() => handleDelete(asset.id)}
+                          className="ml-auto text-[10px] font-black text-red-400 hover:text-red-600 transition-colors">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 }
 
 export default function Settings() {
