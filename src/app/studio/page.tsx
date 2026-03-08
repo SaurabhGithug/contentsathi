@@ -548,6 +548,99 @@ export default function AgenticOrchestrator() {
             </div>
           </div>
         </div>
+
+        {/* ── Campaign Brief Templates ─────────────────────── */}
+        <div className="bg-white border-2 border-gray-100 rounded-[2.5rem] shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-orange-50 to-amber-50">
+            <div className="flex items-center gap-2">
+              <Target className="w-4 h-4 text-orange-600" />
+              <h3 className="font-black text-gray-900 text-sm">Campaign Brief Templates</h3>
+              <span className="px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 text-[9px] font-black uppercase tracking-wider">Nagpur</span>
+            </div>
+            <p className="text-[10px] text-gray-400 font-medium mt-1">Click to pre-fill a goal and deploy the team.</p>
+          </div>
+          <div className="p-4 space-y-2">
+            {[
+              {
+                icon: "🏠",
+                label: "Investor Lead-Gen (NRI)",
+                goal: "Generate 5 investor-focused LinkedIn posts and a WhatsApp broadcast targeting NRIs interested in Nagpur plots near MIHAN. Highlight Ready Reckoner appreciation, RERA compliance, and airport connectivity. Include Hinglish hooks and strong CTAs."
+              },
+              {
+                icon: "🛣️",
+                label: "Channel Audit + Rank",
+                goal: "Run a full competitor channel audit for Nagpur real estate. Score top 5 active channels on LinkedIn, Instagram, and Facebook using our auth criteria (engagement quality, RERA compliance, local relevance). Output a ranked list with scores and recommended counter-angles."
+              },
+              {
+                icon: "⚡",
+                label: "Battle Card: Price War",
+                goal: "A competitor in Wardha Road is running a price-drop campaign. Counter with a 'RERA Trust vs. Price War' battle card in Hinglish for Instagram and Marathi for WhatsApp. Emphasize our NMRDA sanction, infrastructure timeline, and possession guarantee. No price mentions."
+              },
+              {
+                icon: "📅",
+                label: "Daily Morning Brief",
+                goal: "Generate today's daily content brief for all 3 active channels (Instagram, WhatsApp, LinkedIn). Include 1 market signal from Nagpur infrastructure news, 2 content angles per channel with RERA-safe language, and flag any competitor activity from yesterday's scan."
+              },
+              {
+                icon: "🎠",
+                label: "Educational Carousel",
+                goal: "Create a 6-slide Instagram carousel: 'Why Saraswati Nagri is Nagpur's most undervalued investment corridor right now.' Slides: 1) Bold hook, 2) Infrastructure story (Ring Road+Metro), 3) Ready Reckoner data, 4) NMRDA approval proof, 5) Buyer story, 6) CTA. Hinglish, no guaranteed return claims."
+              },
+              {
+                icon: "📊",
+                label: "Weekly Summary Report",
+                goal: "Compile this week's Nagpur content performance summary. Include: channels that performed best, top 3 engaging posts, audience signals by corridor (Wardha/MIHAN/Besa), and next week's recommended content angles. Update soul.md with any new learned rules."
+              },
+            ].map((tpl) => (
+              <button
+                key={tpl.label}
+                onClick={() => {
+                  setNewRunGoal(tpl.goal);
+                  setActiveTab("queue");
+                  toast.success(`Brief loaded: ${tpl.label}`);
+                }}
+                className="w-full flex items-start gap-3 p-3 bg-gray-50 hover:bg-orange-50 hover:border-orange-100 border border-transparent rounded-2xl text-left transition-all group"
+              >
+                <span className="text-lg shrink-0 group-hover:scale-110 transition-transform">{tpl.icon}</span>
+                <div>
+                  <p className="text-xs font-black text-gray-800">{tpl.label}</p>
+                  <p className="text-[10px] text-gray-400 font-medium line-clamp-1 mt-0.5">{tpl.goal.substring(0, 60)}...</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Strategic Goals ──────────────────────────────── */}
+        <div className="bg-white border-2 border-gray-100 rounded-[2.5rem] shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-emerald-50 to-teal-50">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-emerald-600" />
+              <h3 className="font-black text-gray-900 text-sm">Strategic Goals</h3>
+              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[9px] font-black uppercase tracking-wider">Roadmap</span>
+            </div>
+          </div>
+          <div className="p-4 space-y-3">
+            {[
+              { horizon: "12 Weeks", color: "bg-amber-500", items: ["4–6 active Nagpur channels ranked", "Nagpur content template library", "Baseline engagement metrics/corridor", "QA/QC process enforced"] },
+              { horizon: "6 Months", color: "bg-blue-500", items: ["Fully autonomous content cycle", "Live market signal dashboard", "<5% revision rate across all agents"] },
+              { horizon: "12 Months", color: "bg-violet-500", items: ["Multi-micro-market coverage (all Nagpur corridors)", "Optimized CAC per corridor", "Full content archive by season"] },
+            ].map((goal) => (
+              <div key={goal.horizon} className="p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className={`w-2 h-2 rounded-full ${goal.color} shrink-0`} />
+                  <p className="text-[10px] font-black text-gray-600 uppercase tracking-widest">{goal.horizon}</p>
+                </div>
+                {goal.items.map((item, i) => (
+                  <div key={i} className="flex items-start gap-2 mb-1">
+                    <span className="text-gray-300 text-xs mt-0.5 shrink-0">·</span>
+                    <p className="text-[10px] font-medium text-gray-600 leading-snug">{item}</p>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
