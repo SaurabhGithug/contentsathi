@@ -42,7 +42,7 @@ const AGENTS = [
     skills: ["GatherSources", "CompetitorAnalysis", "GapIdentification", "MarketDataScrape", "HunterMode", "BattleCardDraft"],
     outputs: ["Competitor audit", "3 proven angles", "Local market data", "Gap report", "Battle Card (Hinglish + Marathi)"],
     metrics: { avgTime: "34s", successRate: "92%", revisionCount: 1 },
-    sampleOutput: "Market Intel Summary:\n• Competitors using: 'Plot in Nagpur under 20L' hooks on Instagram\n• MISSED ANGLE: None are covering MIHAN expansion effect on North Nagpur\n• Data: Avg plot appreciation in Saraswati Nagri = 22% YoY (MagicBricks Q1)\n• GAP BRIEF for Content Lead: Diaspora investor angle underused — only 1 competitor posting in Hindi for NRIs",
+    sampleOutput: "Market Intel Summary:\n• Competitors using: 'Plot in Nagpur under 20L' hooks on Instagram\n• MISSED ANGLE: None are covering MIHAN expansion effect on North Nagpur\n• Data: Avg plot appreciation in Saraswati Nagri = 22% YoY (MagicBricks Q1)\n• GAP BRIEF for Content Lead: Diaspora investor angle underused — only 1 competitor posting in Hindi for NRIs\n\n═══ HUNTER MODE: Battle Card Drafted ═══\n🎯 Wardha Road — HIGH urgency\nCompetitor Activity: Price-drop campaign detected on 99acres\nBattle Card (Hinglish): 'Sasta plot = compromise on title clarity. Hamara RERA-approved plot ka certificate dekho, phir decide karo.'",
     dependencies: { needs: ["Campaign Brief"], provides: ["Research Data", "Gap Analysis", "Battle Card"] },
     marketWatchLink: true,
   },

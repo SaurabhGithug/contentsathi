@@ -51,7 +51,7 @@ export default function AgenticOrchestrator() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "assistant",
-      content: "Namaste! 🙏 Main hoon aapka AI Co-Founder. Mujhe WhatsApp se command do (e.g. 'Generate NRI leads for bespoke flats'), ya yahan direct type karo. Main background me sab handle karunga.",
+      content: "Namaste! 🙏 Main hoon **Gravity Claw** — aapka autonomous AI Content Strategist. Mujhe WhatsApp se command do (e.g. 'Generate NRI leads for bespoke flats'), ya yahan direct type karo. Main background me sab handle karunga.",
     },
   ]);
   const [chatInput, setChatInput] = useState("");
@@ -265,7 +265,7 @@ export default function AgenticOrchestrator() {
               }`}
             >
               <Bot className="w-4 h-4" />
-              Chat & Instruct
+              Memory & Instruct
             </button>
           </div>
 

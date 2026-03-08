@@ -163,9 +163,15 @@ export default function ApprovalsPage() {
       approve: "✅ Approved! Distribution Agent will schedule this.",
       approve_suggest_tone: "✅ Approved with tone note. Gravity Claw has learned your preference.",
       approve_with_suggestion: "✅ Approved with feedback! Gravity Claw updated its Core Memory.",
-      reject_flag_competitor: "🔎 Flagged for competitor analysis. Research Agent will investigate.",
+      reject_flag_competitor: "🔎 Flagged for Research Specialist · Hunter Mode. Redirecting to Market Watch...",
       reject_low_quality: "🔄 Rejected. Sent back to Copywriter for full rewrite.",
     };
+
+    if (action === "reject_flag_competitor") {
+      toast.error(toastMsg[action]);
+      setTimeout(() => { window.location.href = "/market-watch"; }, 1200);
+      return;
+    }
 
     if (action === "approve" || action === "approve_with_suggestion" || action === "approve_suggest_tone") {
       toast.success(toastMsg[action]);

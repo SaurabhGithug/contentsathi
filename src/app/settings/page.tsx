@@ -352,7 +352,7 @@ function SettingsContent() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Settings &amp; Integrations</h1>
-        <p className="text-gray-500 mt-1">Configure your AI Content Partner persona, social channels, and workspace integrations.</p>
+        <p className="text-gray-500 mt-1">Configure your <strong>Gravity Claw</strong> AI team — brand, channels, language preferences and workspace integrations.</p>
       </div>
 
       <div className="flex flex-col md:flex-row gap-8">

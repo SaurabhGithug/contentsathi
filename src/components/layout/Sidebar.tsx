@@ -28,15 +28,15 @@ import * as Tooltip from "@radix-ui/react-tooltip";
 import * as Popover from "@radix-ui/react-popover";
 
 const navItems = [
-  { name: "Agency HQ",             href: "/dashboard",             icon: LayoutDashboard },
-  { name: "AI Studio",             href: "/studio",                icon: BrainCircuit },
-  { name: "Agent Team",            href: "/agents",                icon: Users },
-  { name: "Approvals & QC",        href: "/approvals",             icon: BookOpen },
-  { name: "Market Hunter",         href: "/market-watch",          icon: TrendingUp },
-  { name: "Asset Vault",           href: "/library",               icon: LayoutTemplate },
-  { name: "Content Calendar",      href: "/calendar",              icon: CalendarDays },
-  { name: "WhatsApp Agents",       href: "/whatsapp-sequences",    icon: MessageCircle },
-  { name: "Analytics",             href: "/analytics",             icon: Activity },
+  { name: "Agency HQ",              href: "/dashboard",          icon: LayoutDashboard },
+  { name: "AI Studio",              href: "/studio",             icon: BrainCircuit },
+  { name: "Agent Team",             href: "/agents",             icon: Users },
+  { name: "Approvals & QC",         href: "/approvals",          icon: BookOpen },
+  { name: "Research · Hunter Mode", href: "/market-watch",       icon: TrendingUp },
+  { name: "Asset Vault",            href: "/library",            icon: LayoutTemplate },
+  { name: "Content Calendar",       href: "/calendar",           icon: CalendarDays },
+  { name: "WhatsApp Setup",         href: "/settings?tab=accounts", icon: MessageCircle },
+  { name: "Analytics",              href: "/analytics",          icon: Activity },
 ];
 
 import { BrainCircuit } from "lucide-react";
@@ -78,7 +78,7 @@ export function Sidebar() {
           <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center shadow-md shadow-indigo-200">
             <Zap className="w-5 h-5 text-white fill-white" />
           </div>
-          <span className="text-xl font-black text-gray-900 tracking-tighter">Contentsathi</span>
+          <span className="text-xl font-black text-gray-900 tracking-tighter">ContentSathi</span>
         </div>
 
         {/* Main nav */}
@@ -211,11 +211,11 @@ export function Sidebar() {
       {/* ── Mobile bottom nav (375px) ───────────────────────────────────── */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 flex items-center justify-around px-2 py-2 safe-area-inset-bottom pb-4">
         {[
-          { name: "HQ",         href: "/dashboard",  icon: LayoutDashboard, emoji: "🏢" },
-          { name: "Studio",     href: "/studio",     icon: BrainCircuit,    emoji: "🤖" },
-          { name: "Approvals",  href: "/approvals",  icon: BookOpen,        emoji: "✅" },
-          { name: "Calendar",   href: "/calendar",   icon: CalendarDays,    emoji: "📅" },
-          { name: "Settings",   href: "/settings",   icon: Settings,        emoji: "⚙️" },
+          { name: "HQ",       href: "/dashboard",    emoji: "🏢" },
+          { name: "Studio",   href: "/studio",       emoji: "🤖" },
+          { name: "Agents",   href: "/agents",       emoji: "👥" },
+          { name: "Hunter",   href: "/market-watch", emoji: "🕵️" },
+          { name: "Vault",    href: "/library",      emoji: "🗃️" },
         ].map((item) => {
           const isActive = pathname.startsWith(item.href);
           return (

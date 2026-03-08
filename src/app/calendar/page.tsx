@@ -124,7 +124,7 @@ export default function CalendarPage() {
                 <CalendarIcon className="w-8 h-8" />
             </div>
             <div>
-                <h1 className="text-3xl font-black text-gray-900 tracking-tight">Strategy Calendar</h1>
+                <h1 className="text-3xl font-black text-gray-900 tracking-tight">Content Calendar</h1>
                 <p className="text-sm font-medium text-gray-400">Your content distribution master plan.</p>
             </div>
         </div>

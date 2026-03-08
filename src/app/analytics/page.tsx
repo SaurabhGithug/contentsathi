@@ -18,13 +18,13 @@ const PERFORMANCE_OVER_TIME = [
 ];
 
 const AGENT_ANALYTICS = [
-  { name: "Content Lead",    avgTime: "18s", successRate: 97, revisions: 0,  color: "violet",  emoji: "👩‍💼" },
-  { name: "Research Agent",  avgTime: "34s", successRate: 92, revisions: 1,  color: "blue",    emoji: "🕵️" },
-  { name: "Copywriter",      avgTime: "28s", successRate: 94, revisions: 1,  color: "cyan",    emoji: "✍️" },
-  { name: "SEO Specialist",  avgTime: "15s", successRate: 98, revisions: 0,  color: "teal",    emoji: "🔤" },
-  { name: "Visual Designer", avgTime: "22s", successRate: 90, revisions: 2,  color: "amber",   emoji: "🎨" },
-  { name: "QC Auditor",      avgTime: "20s", successRate: 95, revisions: 0,  color: "orange",  emoji: "✅" },
-  { name: "Distribution",    avgTime: "12s", successRate: 99, revisions: 0,  color: "rose",    emoji: "🚀" },
+  { name: "Content Lead",         avgTime: "18s", successRate: 97, revisions: 0,  color: "violet",  emoji: "👩‍💼" },
+  { name: "Research Specialist",  avgTime: "34s", successRate: 92, revisions: 1,  color: "blue",    emoji: "🕵️" },
+  { name: "Copywriter",           avgTime: "28s", successRate: 94, revisions: 1,  color: "cyan",    emoji: "✍️" },
+  { name: "SEO Specialist",       avgTime: "15s", successRate: 98, revisions: 0,  color: "teal",    emoji: "🔤" },
+  { name: "Visual Designer",      avgTime: "22s", successRate: 90, revisions: 2,  color: "amber",   emoji: "🎨" },
+  { name: "QC Auditor",           avgTime: "20s", successRate: 95, revisions: 0,  color: "orange",  emoji: "✅" },
+  { name: "Distribution Agent",   avgTime: "12s", successRate: 99, revisions: 0,  color: "rose",    emoji: "🚀" },
 ];
 
 const CONTENT_MIX = [
@@ -60,14 +60,14 @@ function MiniBar({ value, max = 100, color }: { value: number; max?: number; col
 
 // ─── Story Mode Timeline ───────────────────────────────────────────────────────
 const STORY_EVENTS = [
-  { time: "Day 1, 9:00 AM", event: "Campaign briefed", desc: "NRI Investor Lead-Gen — Saraswati Nagri Q2", type: "brief",   emoji: "🎯" },
-  { time: "Day 1, 9:00:18", event: "Research completed", desc: "MIHAN gap identified. 3 competitor angles scraped.", type: "research", emoji: "🔍" },
-  { time: "Day 1, 9:00:52", event: "QC Micro-Audit passed", desc: "Research data cleared for Copywriter.", type: "qc",       emoji: "✅" },
-  { time: "Day 1, 9:01:20", event: "3 posts drafted", desc: "LinkedIn, Instagram, WhatsApp copy generated.", type: "write",   emoji: "✍️" },
-  { time: "Day 1, 9:01:40", event: "QC Flagged Revision", desc: "Instagram 'guarantee' phrase flagged. Dynamic reroute.", type: "revision", emoji: "⚠️" },
-  { time: "Day 1, 9:01:55", event: "Targeted Rewrite", desc: "Only Instagram caption rewritten. LinkedIn & WA intact.", type: "fix",      emoji: "🔄" },
-  { time: "Day 1, 9:02:10", event: "All posts approved by QC", desc: "Scores: LinkedIn 9/10, Instagram 8/10, WhatsApp 8/10.", type: "approved", emoji: "🌟" },
-  { time: "Day 1, 9:02:22", event: "Scheduled by Distribution", desc: "LinkedIn: Tue 9AM · IG: Thu 7:30PM · WA: Mon 11AM", type: "publish", emoji: "🚀" },
+  { time: "Day 1, 9:00 AM",  event: "Campaign briefed",         desc: "NRI Investor Lead-Gen — Saraswati Nagri Q2 2026",               type: "brief",    emoji: "🎯" },
+  { time: "Day 1, 9:00:18",  event: "Research completed",       desc: "MIHAN gap identified. 3 competitor angles scraped.",           type: "research", emoji: "🔍" },
+  { time: "Day 1, 9:00:52",  event: "QC Micro-Audit passed",    desc: "Research data cleared for Copywriter.",                        type: "qc",       emoji: "✅" },
+  { time: "Day 1, 9:01:20",  event: "3 posts drafted",          desc: "LinkedIn, Instagram, WhatsApp copy generated.",               type: "write",    emoji: "✍️" },
+  { time: "Day 1, 9:01:40",  event: "QC Flagged Revision",      desc: "Instagram 'guarantee' phrase flagged. Dynamic reroute.",      type: "revision", emoji: "⚠️" },
+  { time: "Day 1, 9:01:55",  event: "Targeted Rewrite",         desc: "Only Instagram caption rewritten. LinkedIn & WA intact.",      type: "fix",      emoji: "🔄" },
+  { time: "Day 1, 9:02:10",  event: "All posts approved by QC", desc: "Scores: LinkedIn 9/10, Instagram 8/10, WhatsApp 8/10.",       type: "approved", emoji: "🌟" },
+  { time: "Day 1, 9:02:22",  event: "Scheduled by Distribution",desc: "LinkedIn: Tue 9AM · IG: Thu 7:30PM · WA: Mon 11AM",           type: "publish",  emoji: "🚀" },
 ];
 
 const EVENT_COLORS: Record<string, string> = {
@@ -99,7 +99,10 @@ export default function AnalyticsPage() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <p className="text-xs font-black uppercase tracking-widest text-indigo-500 mb-1">ContentSathi · Analytics</p>
-          <h1 className="text-4xl font-black text-gray-900 tracking-tight">Campaign Analytics</h1>
+          <h1 className="text-4xl font-black text-gray-900 tracking-tight flex items-center gap-3">
+            Campaign Analytics
+            <span className="text-xs font-black px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200 uppercase tracking-widest">Demo Data</span>
+          </h1>
           <p className="text-gray-400 font-medium mt-1">Quality scores, agent performance, campaign history, and audit trail.</p>
         </div>
         <div className="flex bg-gray-100 p-1 rounded-xl gap-1">

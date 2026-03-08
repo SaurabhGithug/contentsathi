@@ -39,6 +39,7 @@ const KPI_CARDS = [
 export default function AgencyHQPage() {
   const [stats, setStats] = useState<any>(null);
   const [tasks, setTasks] = useState<any[]>([]);
+  const [pendingApprovals, setPendingApprovals] = useState<number>(0);
   const [onboardingCompleted, setOnboardingCompleted] = useState(true);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"heatmap" | "list">("heatmap");
@@ -52,9 +53,10 @@ export default function AgencyHQPage() {
 
   async function fetchAll() {
     try {
-      const [statsRes, tasksRes] = await Promise.all([
+      const [statsRes, tasksRes, approvalsRes] = await Promise.all([
         fetch("/api/dashboard/stats"),
         fetch("/api/studio/tasks"),
+        fetch("/api/approvals"),
       ]);
       if (statsRes.ok) {
         const s = await statsRes.json();
@@ -64,6 +66,11 @@ export default function AgencyHQPage() {
       if (tasksRes.ok) {
         const t = await tasksRes.json();
         setTasks(t.tasks || []);
+      }
+      if (approvalsRes.ok) {
+        const a = await approvalsRes.json();
+        const pending = (a.items || a || []).filter((i: any) => i.status === "pending" || i.status === "staged").length;
+        setPendingApprovals(pending);
       }
     } catch {}
     finally { setLoading(false); }
@@ -114,10 +121,10 @@ export default function AgencyHQPage() {
       {/* ── KPI Row ────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Active Campaigns",   value: loading ? "—" : activeTasks.length,            sub: "Currently processing",   color: "indigo",  icon: Layers },
-          { label: "Completed Runs",     value: loading ? "—" : completedCount,                sub: "All time",               color: "emerald", icon: CheckCircle2 },
-          { label: "Approvals Pending",  value: "3",                                           sub: "In human-gate queue",    color: "amber",   icon: CheckCircle2 },
-          { label: "Credits Balance",    value: loading ? "—" : (stats?.creditsBalance ?? "∞"), sub: "Posts remaining",       color: "violet",  icon: Zap },
+          { label: "Active Campaigns",   value: loading ? "—" : activeTasks.length,             sub: "Currently processing",   color: "indigo",  icon: Layers },
+          { label: "Completed Runs",     value: loading ? "—" : completedCount,                 sub: "All time",               color: "emerald", icon: CheckCircle2 },
+          { label: "Approvals Pending",  value: loading ? "—" : pendingApprovals,               sub: "In human-gate queue",    color: "amber",   icon: CheckCircle2 },
+          { label: "Credits Balance",    value: loading ? "—" : (stats?.creditsBalance ?? "∞"), sub: "Posts remaining",        color: "violet",  icon: Zap },
         ].map((kpi, i) => {
           const Icon = kpi.icon;
           return (
