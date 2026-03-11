@@ -4,68 +4,12 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { callSarvamChat } from "@/lib/sarvam";
 import { isValuationIntent, parsePlotFromMessage } from "@/app/api/studio/valuate-plot/route";
+import { isOperationalQuery, runOperationalQuery } from "@/lib/cao-ops";
 
 export const runtime = "nodejs";
 export const maxDuration = 90;
 
-// ── Operational Intent Detector ──────────────────────────────────────────────
-function isOperationalQuery(message: string): boolean {
-  const lower = message.toLowerCase();
-  return [
-    "connected", "account", "social account", "linkedin", "instagram", "whatsapp",
-    "is my", "check my", "show my", "how many", "how much", "status",
-    "posts generated", "content generated", "pipeline", "credits",
-    "published", "scheduled", "pending", "approvals", "connected accounts",
-    "mera account", "linked hai", "connect hua", "kitne posts",
-  ].some((t) => lower.includes(t));
-}
-
-// ── DB-backed operational query ───────────────────────────────────────────────
-async function runOperationalQuery(message: string, userId?: string): Promise<string | null> {
-  const lower = message.toLowerCase();
-  if (!userId) return null;
-
-  try {
-    const isAccountQuery = ["connect", "account", "linkedin", "instagram", "whatsapp", "linked", "mera account"]
-      .some((k) => lower.includes(k));
-
-    if (isAccountQuery) {
-      const accounts = await (prisma.socialAccount as any).findMany({
-        where: { userId },
-        select: { platform: true, accountName: true, isActive: true, tokenExpiry: true },
-      }).catch(() => []);
-
-      if (accounts.length === 0) {
-        return `**No social accounts connected yet.**\n\nGo to **Settings → Accounts** to connect LinkedIn, Instagram, or WhatsApp.`;
-      }
-
-      const emoji: Record<string, string> = { linkedin: "💼", instagram: "📸", whatsapp: "💬", twitter: "🐦", x: "🐦", youtube: "▶️" };
-      const lines = accounts.map((a: any) => {
-        const expired = a.tokenExpiry && new Date(a.tokenExpiry) < new Date();
-        const status = !a.isActive ? "❌ Disconnected" : expired ? "⚠️ Token expired — reconnect" : "✅ Connected";
-        const name = a.platform?.charAt(0).toUpperCase() + a.platform?.slice(1);
-        return `${emoji[a.platform?.toLowerCase()] || "🔗"} **${name}** — ${a.accountName || "Unknown"} · ${status}`;
-      });
-
-      return `**Your Connected Accounts:**\n\n${lines.join("\n")}\n\n*Settings → Accounts to add or reconnect.*`;
-    }
-
-    const isStatsQuery = ["posts", "content", "generated", "published", "kitne", "pipeline"]
-      .some((k) => lower.includes(k));
-
-    if (isStatsQuery) {
-      const [total, published, pending] = await Promise.all([
-        prisma.generatedAsset.count({ where: { userId } }).catch(() => 0),
-        prisma.publishLog.count({ where: { userId, status: "SUCCESS" } }).catch(() => 0),
-        prisma.calendarItem.count({ where: { userId, status: { in: ["draft", "ready"] } } }).catch(() => 0),
-      ]);
-      return `**Content Stats:**\n\n| Metric | Count |\n|---|---|\n| Total Generated | **${total}** |\n| Published | **${published}** |\n| Pending / Draft | **${pending}** |`;
-    }
-  } catch (e: any) {
-    console.error("[CAO:OpQuery]", e.message);
-  }
-  return null;
-}
+// ── Operational Logic Moved to @/lib/cao-ops ───────────────────────────────
 
 // Helper: detect permanent instruction
 function isPermanentInstruction(message: string): boolean {

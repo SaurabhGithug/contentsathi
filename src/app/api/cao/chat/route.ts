@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { callSarvamChat } from "@/lib/sarvam";
 import { searchWeb } from "@/lib/tavily";
 import { marketHunter } from "@/lib/social-scraper";
-import { isOperationalQuery, runOperationalQuery } from "@/app/api/studio/chat/route";
+import { isOperationalQuery, runOperationalQuery } from "@/lib/cao-ops";
 import { isValuationIntent, parsePlotFromMessage } from "@/app/api/studio/valuate-plot/route";
 
 export const runtime = "nodejs";
@@ -88,9 +88,16 @@ export async function POST(req: Request) {
     // Check for research or social media search intent
     let extraContext = "";
     const query = message.toLowerCase();
-    const isSocialSearch = query.includes("linkedin") || query.includes("instagram") || query.includes("twitter") || query.includes("social");
+    
+    // Improved search intent detection: Only search if user explicitly asks for research/market/latest info, 
+    // NOT when asking functional questions about their account status.
+    const hasSearchIntent = query.includes("research") || query.includes("search") || 
+                           query.includes("latest") || query.includes("market") ||
+                           query.includes("competitor") || query.includes("analysis");
 
-    if (query.includes("research") || query.includes("search") || query.includes("latest") || isSocialSearch) {
+    const isSocialSearch = hasSearchIntent && (query.includes("linkedin") || query.includes("instagram") || query.includes("twitter") || query.includes("social"));
+
+    if (hasSearchIntent) {
       try {
         if (isSocialSearch) {
           const socialResults = await marketHunter(message, user.id);
@@ -117,37 +124,23 @@ export async function POST(req: Request) {
     const caoSystemPrompt = `You are the Chief AI Officer (CAO) for ${brain.brandName || "this real estate brand"}.
 You DO NOT introduce yourself every time. You talk like a highly intelligent, proactive, data-driven Chief of Staff in a fast-paced agency.
 
-YOUR CURRENT STRATEGY (If asked what we are doing):
+YOUR CURRENT STRATEGY:
 ${caoStrategy}
 
-RECENT CAMPAIGN HISTORY:
-${JSON.stringify(campaignLog)}
-
 YOUR BRAND KNOWLEDGE:
-Industry: ${brain.industry || "Real Estate"}
-Location: ${brain.location || "Nagpur"}
-Audience: ${brain.audienceDescription || "Buyers/Investors"}
-Tone: ${brain.tone || "Professional, authoritative"}
-USPs: ${(brain.usps || []).join(", ")}
-Rules (soul.md): ${brain.orchestratorMemory || "None yet"}
+Industry: ${brain.industry || "Real Estate"} | Location: ${brain.location || "Nagpur"} | Tone: ${brain.tone || "Professional"}
 
 ${extraContext}
 
-YOUR CAPABILITIES (If the user asks what to do):
-- You can build strategies based on data.
-- You can launch campaigns (tell the user to go to the AI Studio or say "I will launch this").
-- You can create new specialized sub-agents if the user asks.
-- You can search the live web for competitors or market news.
-
-FORMATTING RULES (VERY IMPORTANT):
-- Use proper markdown with clear headings (##, ###), bullet points, and numbered lists.
-- Put each section on a new line.
+FORMATTING RULES:
+- Use proper markdown (##, ###, bullets).
 - Use bold (**text**) for emphasis.
-- NEVER output <think> tags or any XML-like tags.
-- Keep responses well-structured and scannable — avoid walls of text.
-- Use short paragraphs, each separated by a blank line.
+- NEVER output <think> tags.
 
-Answer the user directly, concisely, and strategically. Do NOT use fake filler data; if you don't know something, tell them what you need to find out.`;
+CRITICAL DIRECTIVE:
+- If the user is asking about their account connection status, posts, or credits, DO NOT talk about Nagpur real estate, RERA, or sales funnels. 
+- DO NOT say you cannot access internal data. You are the CAO; you have full system access.
+- Be direct, strategic, and concise.`;
 
     // Format chat history for the prompt
     const historyText = chatHistory
