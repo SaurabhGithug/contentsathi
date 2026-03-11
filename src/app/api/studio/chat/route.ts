@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { callSarvamChat } from "@/lib/sarvam";
+import { isValuationIntent, parsePlotFromMessage } from "@/app/api/studio/valuate-plot/route";
 
 export const runtime = "nodejs";
+export const maxDuration = 90;
 
 // Helper: detect if a message is a permanent instruction to update memory/soul.md
 function isPermanentInstruction(message: string): boolean {
@@ -16,63 +18,171 @@ function isPermanentInstruction(message: string): boolean {
   return keywords.some((kw) => lower.includes(kw));
 }
 
+// Helper: format INR amounts
+function formatCr(v: number): string {
+  if (v >= 10_000_000) return `₹${(v / 10_000_000).toFixed(2)} Cr`;
+  if (v >= 100_000)    return `₹${(v / 100_000).toFixed(2)} L`;
+  return `₹${v.toLocaleString("en-IN")}`;
+}
+
+// Helper: call the valuation engine inline (no HTTP round-trip needed)
+async function runValuationEngine(message: string, userId?: string): Promise<string> {
+  try {
+    const parsed = parsePlotFromMessage(message);
+    const { POST: valuatePost } = await import("@/app/api/studio/valuate-plot/route");
+
+    const body = JSON.stringify({
+      userQuery: message,
+      corridor:    parsed.corridor,
+      areaSqFt:    parsed.areaSqFt,
+      isCornerPlot: parsed.isCornerPlot,
+      shape:       parsed.shape,
+      location:    parsed.corridor || "Nagpur",
+      userId,
+    });
+
+    const syntheticReq = new Request("http://localhost/api/studio/valuate-plot", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    });
+
+    const res  = await valuatePost(syntheticReq);
+    const data = await res.json();
+
+    if (data.error) throw new Error(data.error);
+
+    // ── Format structured response as a rich Markdown chat message ──────────
+    const hasArea        = data.estimatedRangeLow > 0;
+    const confidenceBadge = data.dataConfidence === "HIGH" ? "🟢 High" : data.dataConfidence === "MEDIUM" ? "🟡 Medium" : "🔴 Low";
+    const signalMatch    = (data.analysisNarrative || "").match(/SIGNAL:\s*(BUY|HOLD|EVALUATE|SELL)/i);
+    const signal         = signalMatch ? signalMatch[1] : (data.marketPremiumPct >= 10 ? "BUY" : data.marketPremiumPct >= 5 ? "HOLD" : "EVALUATE");
+    const signalEmoji    = signal === "BUY" ? "🚀" : signal === "HOLD" ? "📊" : signal === "SELL" ? "⚠️" : "🔎";
+
+    let reply = `## 🏗️ CAO Plot Valuation Report\n\n`;
+
+    if (parsed.corridor) {
+      reply += `**Corridor:** ${parsed.corridor} · **Circle Rate:** ₹${data.circleRate}/sqft · **Market Premium:** +${data.marketPremiumPct?.toFixed(1)}% above circle rate\n\n`;
+    }
+
+    if (hasArea) {
+      reply += `### 📊 Value Estimate\n| Metric | Value |\n|---|---|\n`;
+      reply += `| **Market Rate** | ₹${data.estimatedPPSF?.toLocaleString("en-IN")}/sqft |\n`;
+      reply += `| **Estimated Range** | ${formatCr(data.estimatedRangeLow)} – ${formatCr(data.estimatedRangeHigh)} |\n`;
+      reply += `| **⚡ Fast-Sell Price** | **${formatCr(data.fastSellPrice)}** |\n`;
+      reply += `| Circle Rate (govt.) | ₹${data.circleRate}/sqft |\n\n`;
+    } else {
+      reply += `### 📊 Rate Estimate *(area not specified)*\n| Metric | Value |\n|---|---|\n`;
+      reply += `| **Market Rate** | ₹${data.estimatedPPSF?.toLocaleString("en-IN")}/sqft |\n`;
+      reply += `| Circle Rate | ₹${data.circleRate}/sqft |\n\n`;
+      reply += `> ℹ️ *Provide plot area (sq ft / gunta / acres) for a total ₹ estimate.*\n\n`;
+    }
+
+    reply += `### ${signalEmoji} Signal: **${signal}**\n`;
+    reply += `${(data.analysisNarrative || "").replace(/BOTTOM LINE:.*$/m, "").trim()}\n\n`;
+
+    reply += `### ⚡ Fast-Sell Rationale\n${data.fastSellRationale}\n\n`;
+
+    if (data.keyDrivers?.length) {
+      reply += `### ✅ Key Value Drivers\n${data.keyDrivers.map((d: string) => `- ${d}`).join("\n")}\n\n`;
+    }
+    if (data.riskFactors?.length) {
+      reply += `### ⚠️ Risk Factors\n${data.riskFactors.map((r: string) => `- ${r}`).join("\n")}\n\n`;
+    }
+
+    reply += `---\n**Data:** ${data.compsUsed} portal comps · ${data.liveSignals} live signals · Confidence: ${confidenceBadge}\n`;
+    reply += `*Indicative estimate only. Verify with EC, RERA check, and a certified valuer before transacting.*`;
+
+    return reply;
+
+  } catch (e: any) {
+    console.error("[Chat:Valuate] Error:", e.message);
+    return `I tried the valuation engine but hit an error: ${e.message}. Try the **Plot Value Estimator** in the sidebar for a full analysis — it works offline too.`;
+  }
+}
+
+// ── POST — main chat handler ─────────────────────────────────────────────────
+
 export async function POST(req: Request) {
   try {
-    // FOR NOW: Bypassing auth (admin panel is open as instructed)
     const { message, userId } = await req.json();
 
     if (!message?.trim()) {
       return NextResponse.json({ error: "Message is required" }, { status: 400 });
     }
 
-    // Fetch or create ContentBrain for user (use first available if no userId)
-    let brain = userId
+    // ── Valuation Intent Intercept ───────────────────────────────────────────
+    if (isValuationIntent(message)) {
+      console.log("[Chat] 🏗️ Valuation intent — routing to ValuateBot");
+
+      const [valuationReply, brain] = await Promise.all([
+        runValuationEngine(message, userId),
+        userId
+          ? prisma.contentBrain.findFirst({ where: { userId } })
+          : prisma.contentBrain.findFirst({ orderBy: { updatedAt: "desc" } }),
+      ]);
+
+      const chatHistory: Array<{ role: string; content: string }> =
+        Array.isArray(brain?.orchestratorChatHistory) ? (brain!.orchestratorChatHistory as any) : [];
+
+      const updatedHistory = [
+        ...chatHistory,
+        { role: "user",      content: message },
+        { role: "assistant", content: valuationReply },
+      ].slice(-20);
+
+      if (brain) {
+        await prisma.contentBrain.update({
+          where: { id: brain.id },
+          data:  { orchestratorChatHistory: updatedHistory },
+        });
+      }
+
+      return NextResponse.json({ reply: valuationReply, mode: "valuation", memoryUpdated: false });
+    }
+
+    // ── Standard Chat ────────────────────────────────────────────────────────
+    const brain = userId
       ? await prisma.contentBrain.findFirst({ where: { userId } })
       : await prisma.contentBrain.findFirst({ orderBy: { updatedAt: "desc" } });
 
     const currentMemory = (brain?.orchestratorMemory as string) || DEFAULT_MEMORY;
     const chatHistory: Array<{ role: string; content: string }> =
-      Array.isArray(brain?.orchestratorChatHistory) ? (brain.orchestratorChatHistory as any) : [];
+      Array.isArray(brain?.orchestratorChatHistory) ? (brain?.orchestratorChatHistory as any) : [];
 
     const isRule = isPermanentInstruction(message);
 
-    // Build system prompt with the soul.md memory
-    const systemPrompt = `You are the ContentSathi AI Co-Founder — a personal AI business partner for an Indian real estate content creator. 
-You are deeply intelligent, proactive, and speak in a warm Hinglish (Hindi + English) style.
+    const systemPrompt = `You are the ContentSathi AI Co-Founder — a personal AI business partner for an Indian real estate content creator.
+You are deeply intelligent, proactive, and speak in warm Hinglish (Hindi + English).
 
-YOUR CORE MEMORY (soul.md) — these are the rules and preferences your user has taught you:
+YOUR CORE MEMORY (soul.md):
 ---
 ${currentMemory}
 ---
 
-You have conversational memory of recent chats. Be contextual and helpful.
-
-${isRule ? `IMPORTANT: The user is giving you a new permanent instruction. At the END of your response, add a line starting with "[MEMORY_UPDATE]: " followed by the SPECIFIC new rule to add/update in your Core Memory. Be precise and concise about what to add. Do NOT include this prefix text in your visible response.` : ""}
+${isRule ? `IMPORTANT: The user is giving a new permanent instruction. At the END of your response, add "[MEMORY_UPDATE]: <concise rule>". Do NOT include this in the visible response.` : ""}
 
 Your capabilities:
-- Help the user think through their content strategy
-- Remember and apply their preferences and rules 
-- Suggest topics, tones, posting schedules based on what you know
-- Give real estate market insights for Indian tier-2 cities (especially Nagpur)
-- Answer questions about their ContentSathi dashboard and pipeline
+- Content strategy, topics, schedules, audience insights
+- Real estate market insights for Nagpur & Indian tier-2 cities
+- 🏗️ Plot/land valuation — just describe a plot and say "value estimate" or "kitna milega"
+- Dashboard and pipeline questions
 
-Keep responses concise, actionable, and warm. Use emojis occasionally. Speak like a smart friend who is also a savvy business partner.`;
+Respond warmly, concisely, like a smart business partner. Use emojis occasionally.`;
 
-    // Build messages for the LLM
     const historyContext = chatHistory
-      .slice(-8) // last 8 exchanges
-      .map((m) => `${m.role === "user" ? "User" : "AI"}: ${m.content}`)
+      .slice(-8)
+      .map((m) => `${m.role === "user" ? "User" : "AI"}: ${m.content.substring(0, 300)}`)
       .join("\n");
 
     const fullPrompt = historyContext
       ? `Previous conversation:\n${historyContext}\n\nUser now says: ${message}`
       : message;
 
-    // Call Sarvam API
     let aiResponse = "";
     try {
       aiResponse = await callSarvamChat(systemPrompt, fullPrompt);
-    } catch (e) {
+    } catch {
       aiResponse = "Maafi karo, AI abhi thoda busy hai! Ek baar phir try karo. 🙏";
     }
 
@@ -80,66 +190,55 @@ Keep responses concise, actionable, and warm. Use emojis occasionally. Speak lik
     let memoryUpdated = false;
     let newRule = "";
     const memoryMarker = "[MEMORY_UPDATE]:";
-    const markerIndex = aiResponse.indexOf(memoryMarker);
+    const markerIndex  = aiResponse.indexOf(memoryMarker);
     if (markerIndex !== -1) {
-      newRule = aiResponse.substring(markerIndex + memoryMarker.length).trim();
+      newRule    = aiResponse.substring(markerIndex + memoryMarker.length).trim();
       aiResponse = aiResponse.substring(0, markerIndex).trim();
-
-      // Append new rule to current memory
       const updatedMemory = `${currentMemory}\n- ${newRule}`;
-
-      // Update DB
       if (brain) {
         await prisma.contentBrain.update({
           where: { id: brain.id },
-          data: {
-            orchestratorMemory: updatedMemory,
-          },
+          data:  { orchestratorMemory: updatedMemory },
         });
       }
       memoryUpdated = true;
     }
 
-    // Save updated chat history (cap at 20 messages)
     const updatedHistory = [
       ...chatHistory,
-      { role: "user", content: message },
+      { role: "user",      content: message },
       { role: "assistant", content: aiResponse },
     ].slice(-20);
 
     if (brain) {
       await prisma.contentBrain.update({
         where: { id: brain.id },
-        data: { orchestratorChatHistory: updatedHistory },
+        data:  { orchestratorChatHistory: updatedHistory },
       });
     }
 
     return NextResponse.json({
       reply: aiResponse,
       memoryUpdated,
-      newRule: memoryUpdated ? newRule : undefined,
-      currentMemory: memoryUpdated
-        ? `${currentMemory}\n- ${newRule}`
-        : currentMemory,
+      newRule:       memoryUpdated ? newRule : undefined,
+      currentMemory: memoryUpdated ? `${currentMemory}\n- ${newRule}` : currentMemory,
     });
+
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
+// ── GET & PATCH — unchanged ──────────────────────────────────────────────────
+
 export async function GET() {
   try {
-    // Fetch current memory and chat history for display
     const brain = await prisma.contentBrain.findFirst({
       orderBy: { updatedAt: "desc" },
-      select: {
-        orchestratorMemory: true,
-        orchestratorChatHistory: true,
-      },
+      select:  { orchestratorMemory: true, orchestratorChatHistory: true },
     });
-
     return NextResponse.json({
-      memory: brain?.orchestratorMemory || DEFAULT_MEMORY,
+      memory:      brain?.orchestratorMemory || DEFAULT_MEMORY,
       chatHistory: brain?.orchestratorChatHistory || [],
     });
   } catch (error: any) {
@@ -148,20 +247,15 @@ export async function GET() {
 }
 
 export async function PATCH(req: Request) {
-  // Allow user to manually edit the memory from the UI
   try {
     const { memory } = await req.json();
-    const brain = await prisma.contentBrain.findFirst({
-      orderBy: { updatedAt: "desc" },
-    });
-
+    const brain = await prisma.contentBrain.findFirst({ orderBy: { updatedAt: "desc" } });
     if (brain) {
       await prisma.contentBrain.update({
         where: { id: brain.id },
-        data: { orchestratorMemory: memory },
+        data:  { orchestratorMemory: memory },
       });
     }
-
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -186,6 +280,12 @@ I am the AI Co-Founder and Content Partner for a real estate content creator bas
 - Never use generic content — always make it specific and relatable
 - Respect RERA guidelines in all content
 - Use emojis tastefully in casual (WhatsApp) content only
+
+### Valuation Rules
+- When user asks for plot value / land estimate: trigger ValuateBot automatically
+- Always cite circle rate + market premium when discussing land prices
+- Fast-sell price = 12% below estimated market mid (standard liquidity discount)
+- Always remind user to verify EC, title, and RERA before transacting
 
 ### Brand Voice
 - Professional yet approachable

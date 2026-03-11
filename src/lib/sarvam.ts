@@ -18,7 +18,7 @@ const SARVAM_MODEL = "sarvam-m";
 export async function callSarvamJSON(
   systemPrompt: string,
   userPrompt: string,
-  maxTokens: number = 600
+  maxTokens: number = 1500
 ): Promise<any> {
   const apiKey = process.env.SARVAM_API_KEY;
   if (!apiKey) throw new Error("SARVAM_API_KEY is not configured.");
@@ -51,14 +51,26 @@ export async function callSarvamJSON(
   if (!text) throw new Error("Empty response from Sarvam (JSON)");
 
   try {
-    const clean = text.replace(/^```json\s*/i, "").replace(/\s*```$/i, "").trim();
+    // Strip <think> reasoning tags which can break JSON parse
+    let cleanText = text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+    // Also strip unclosed think tags just to be safe
+    cleanText = cleanText.replace(/<think>[\s\S]*/gi, "").trim();
+
+    const clean = cleanText.replace(/^```json\s*/i, "").replace(/\s*```$/i, "").trim();
     return JSON.parse(clean);
   } catch {
     // Try to extract JSON from anywhere in the response
-    const match = text.match(/\{[\s\S]*\}/);
+    let cleanText = text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+    cleanText = cleanText.replace(/<think>[\s\S]*/gi, "").trim();
+
+    const match = cleanText.match(/\{[\s\S]*\}/);
     if (match) {
       try { return JSON.parse(match[0]); } catch { /* fall through */ }
     }
+    
+    console.error("Sarvam failed to return valid JSON. Raw text:", text.substring(0, 300));
+    const fs = require('fs');
+    fs.appendFileSync('/tmp/sarvam_raw.txt', '\n\n---\n\n' + text);
     throw new Error("Sarvam returned invalid JSON");
   }
 }
@@ -101,7 +113,13 @@ export async function callSarvamChat(
   const data = await response.json();
   const text = data.choices?.[0]?.message?.content;
   if (!text) throw new Error("Empty response from Sarvam (Chat)");
-  return text.trim();
+  
+  // Clean up any leaked reasoning blocks
+  let cleanText = text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+  // If an unclosed tag remains at the start, just strip the tag itself to keep the actual content
+  cleanText = cleanText.replace(/<think>/gi, "").trim();
+
+  return cleanText;
 }
 
 // ── Free Tier Constants ─────────────────────────────────────────────────────

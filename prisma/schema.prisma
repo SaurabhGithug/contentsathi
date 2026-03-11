@@ -6,6 +6,12 @@ datasource db {
   provider = "postgresql"
 }
 
+enum IntelligenceSource {
+  APIFY
+  TAVILY
+  MANUAL
+}
+
 enum PlatformType {
   instagram
   linkedin
@@ -108,8 +114,36 @@ model User {
   whatsappSequences  WhatsAppSequence[]
   agentTasks         AgentTask[]
   projectAssets      ProjectAsset[]
+  marketIntelligence MarketIntelligence[]
+  goldenExamplesLoop GoldenExample[]
+  plotComparables    PlotComparable[]
 
   @@map("users")
+}
+
+model MarketIntelligence {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform        String   // linkedin, instagram, twitter, youtube
+  postId          String?
+  postUrl         String?
+  author          String?
+  content         String
+  likes           Int      @default(0)
+  comments        Int      @default(0)
+  shares          Int      @default(0)
+  engagementScore Float?
+  postedAt        DateTime?
+  scrapedAt       DateTime @default(now())
+  corridor        String?  // Wardha Road, MIHAN, etc.
+  tags            String[]
+  metadata        Json?
+  source          IntelligenceSource @default(TAVILY)
+
+  @@index([userId, platform])
+  @@index([scrapedAt])
+  @@map("market_intelligence")
 }
 
 model AgentTask {
@@ -159,6 +193,10 @@ model ContentBrain {
   competitorHandles       String[]
   orchestratorMemory      String? // Soul.md — auto-updating core rules/preferences for the AI Brain
   orchestratorChatHistory Json? // Last N chat messages for the "Chat with Brain" interface
+  caoStrategy             Json?   // Current CAO self-generated strategy
+  caoLastRunAt            DateTime?
+  caoCustomAgents         Json?   // Dynamically spawned sub-agents
+  caoChannelData          Json?   // Cached channel performance data
   createdAt               DateTime      @default(now())
   updatedAt               DateTime      @updatedAt
 
@@ -574,4 +612,98 @@ model ProjectAsset {
   @@index([userId, fileType])
   @@index([userId, projectName])
   @@map("project_assets")
+}
+
+model SystemConfig {
+  key   String @unique
+  value String
+  @@map("system_configs")
+}
+
+model JobRun {
+  id          String    @id @default(cuid())
+  jobType     String
+  userId      String
+  status      String
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  @@index([userId, jobType, status])
+  @@map("job_runs")
+}
+
+model SystemAlert {
+  id         String    @id @default(cuid())
+  type       String
+  message    String
+  severity   String
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+  @@map("system_alerts")
+}
+
+model GoldenExample {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform          String   // linkedin, instagram, whatsapp, youtube
+  postText          String   // the original high-performing content
+  engagementScore   Float    // likes + (comments * 3) + (shares * 5)
+  structureAnalysis String?  // JSON from Sarvam: hook pattern, emotional trigger, rhythm, CTA style
+  sourcePostId      String?  // optional reference to MarketIntelligence.id
+  usageCount        Int      @default(0) // how many times injected into Copywriter prompts
+  capturedAt        DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([userId, platform])
+  @@index([engagementScore])
+  @@map("golden_examples")
+}
+
+// ─── Plot Comparable ─────────────────────────────────────────────────────────
+// Stores scraped property listing data from 99acres, MagicBricks, Housing.com,
+// local developer sites, etc. Used as market comps in the Plot Valuator.
+// Auto-populated by the Apify property portal scraper on each Market Hunt run.
+model PlotComparable {
+  id              String   @id @default(cuid())
+  userId          String   // owner of the ContentBrain that triggered the scrape
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Location
+  corridor        String   // "Wardha Road", "MIHAN", "Besa", etc.
+  locality        String?  // micro-locality within corridor (e.g. "Near AIIMS", "Ghoti")
+  city            String   @default("Nagpur")
+
+  // Plot details (extracted from listing)
+  title           String?  // listing headline
+  description     String?  // full listing description (truncated)
+  areaSqFt        Float?   // plot area in sq ft
+  areaSqM         Float?   // plot area in sq m (may be scraped directly)
+  priceTotal      Float?   // total listing price in INR
+  pricePerSqFt    Float?   // derived: priceTotal / areaSqFt
+  priceLabel      String?  // raw price string from listing e.g. "₹32 L"
+  isNegotiable    Boolean  @default(false)
+  possessionStatus String? // "Ready", "Under Development", "Approved Layout"
+
+  // Listing metadata
+  source          String   // "99acres" | "magicbricks" | "housing" | "local_site" | "manual"
+  sourceUrl       String?  // original listing URL
+  listingId       String?  // platform-specific listing ID
+  postedAt        DateTime? // when the listing was first published
+  scrapedAt       DateTime @default(now())
+  isVerified      Boolean  @default(false) // manually verified by user
+
+  // Flags
+  isActive        Boolean  @default(true)  // false = listing taken down
+  reraNumber      String?  // if mentioned in listing
+  tags            String[] // ["corner_plot", "road_facing", "irregular", "NMRDA_approved"]
+  metadata        Json?    // raw scraper output for any extra fields
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId, corridor])
+  @@index([corridor, pricePerSqFt])
+  @@index([scrapedAt])
+  @@map("plot_comparables")
 }

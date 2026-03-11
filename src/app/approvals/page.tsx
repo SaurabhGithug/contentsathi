@@ -161,8 +161,8 @@ export default function ApprovalsPage() {
 
     const toastMsg: Record<ApprovalAction, string> = {
       approve: "✅ Approved! Distribution Agent will schedule this.",
-      approve_suggest_tone: "✅ Approved with tone note. Gravity Claw has learned your preference.",
-      approve_with_suggestion: "✅ Approved with feedback! Gravity Claw updated its Core Memory.",
+      approve_suggest_tone: "✅ Approved with tone note. ContentSathi AI has learned your preference.",
+      approve_with_suggestion: "✅ Approved with feedback! ContentSathi AI updated its Brand Memory.",
       reject_flag_competitor: "🔎 Flagged for Research Specialist · Hunter Mode. Redirecting to Market Watch...",
       reject_low_quality: "🔄 Rejected. Sent back to Copywriter for full rewrite.",
     };
@@ -214,7 +214,7 @@ export default function ApprovalsPage() {
             <Sparkles className="w-5 h-5 text-indigo-600" />
           </div>
           <div className="flex-1">
-            <p className="text-[10px] font-black uppercase text-indigo-400 tracking-widest mb-1">Gravity Claw — Proactive Suggestion</p>
+            <p className="text-[10px] font-black uppercase text-indigo-400 tracking-widest mb-1">ContentSathi AI — Proactive Suggestion</p>
             <p className="text-sm font-semibold text-indigo-900">{proactiveSuggestion}</p>
           </div>
           <button
@@ -320,7 +320,7 @@ export default function ApprovalsPage() {
                   {feedbackText[item.id] && (
                     <p className="text-[10px] text-indigo-500 font-bold flex items-center gap-1">
                       <AlertTriangle className="w-3 h-3" />
-                      This feedback will be saved to Gravity Claw&apos;s Core Memory and applied to all future campaigns.
+                      This feedback will be saved to ContentSathi AI&apos;s Brand Memory and applied to all future campaigns.
                     </p>
                   )}
 

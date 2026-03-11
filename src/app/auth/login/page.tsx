@@ -22,8 +22,8 @@ function LoginContent() {
     setError("");
     setLoading(true);
 
-    const loginEmail = isDemo ? "demo@contentsathi.com" : email.trim().toLowerCase();
-    const loginPassword = isDemo ? "demo" : password;
+    const loginEmail = isDemo ? "demo@contentsathi.in" : email.trim().toLowerCase();
+    const loginPassword = isDemo ? "Demo@1234" : password;
 
     if (!loginEmail || !loginPassword) {
       setError("Please enter your email and password, or use the 1-Click login.");

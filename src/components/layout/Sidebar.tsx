@@ -20,6 +20,9 @@ import {
   Facebook,
   MessageCircle,
   Users,
+  Shield,
+  FileText,
+  Calculator,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -28,11 +31,14 @@ import * as Tooltip from "@radix-ui/react-tooltip";
 import * as Popover from "@radix-ui/react-popover";
 
 const navItems = [
+  { name: "Chief AI Officer",       href: "/cao",                icon: Shield },
   { name: "Agency HQ",              href: "/dashboard",          icon: LayoutDashboard },
   { name: "AI Studio",              href: "/studio",             icon: BrainCircuit },
   { name: "Agent Team",             href: "/agents",             icon: Users },
   { name: "Approvals & QC",         href: "/approvals",          icon: BookOpen },
   { name: "Research · Hunter Mode", href: "/market-watch",       icon: TrendingUp },
+  { name: "Plot Value Estimator",   href: "/plot-valuator",      icon: Calculator, badge: "NEW" },
+  { name: "2026 Industry Report",   href: "/report",             icon: FileText },  
   { name: "Asset Vault",            href: "/library",            icon: LayoutTemplate },
   { name: "Content Calendar",       href: "/calendar",           icon: CalendarDays },
   { name: "WhatsApp Setup",         href: "/settings?tab=accounts", icon: MessageCircle },
@@ -83,7 +89,7 @@ export function Sidebar() {
 
         {/* Main nav */}
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-          {navItems.map((item) => {
+          {navItems.map((item: any) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
             return (
               <Link
@@ -101,6 +107,11 @@ export function Sidebar() {
                   style={{ width: "1.125rem", height: "1.125rem" }}
                 />
                 {item.name}
+                {item.badge && (
+                  <span className="ml-auto text-[9px] font-black bg-purple-500 text-white px-1.5 py-0.5 rounded-full">
+                    {item.badge}
+                  </span>
+                )}
               </Link>
             );
           })}

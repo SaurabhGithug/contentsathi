@@ -8,6 +8,8 @@
 
 import { prisma } from "@/lib/prisma";
 import { callSarvamChat } from "@/lib/sarvam";
+import { getTopGoldenExamples, buildGoldenExamplesPromptBlock } from "@/lib/golden-loop";
+import { isSystemPaused, notifyFounder } from "@/lib/alerting";
 
 // ─── Agent Communication Protocol (JSON Schema) ────────────────────────────
 export type AgentRole =
@@ -108,6 +110,11 @@ async function callAgentWithRetry(
       await new Promise((r) => setTimeout(r, 1500 * (retryCount + 1))); // backoff
       return callAgentWithRetry(agentName, refinedPrompt, userMessage, retryCount + 1);
     }
+    await notifyFounder({
+      type: "AGENT_RETRY_EXHAUSTED",
+      message: `Agent ${agentName} exhausted all ${MAX_RETRIES} retries. Last error: ${err.message}`,
+      severity: "HIGH"
+    });
     throw new Error(`Agent ${agentName} exhausted all retries: ${err.message}`);
   }
 }
@@ -132,6 +139,12 @@ Respond in JSON: { "passed": true/false, "issues": ["issue1", "issue2"] }`;
 
 // ─── Main Gravity Claw Entry Point ────────────────────────────────────────────
 export async function runGravityClaw(taskId: string) {
+  // ── Kill Switch Check ──
+  if (await isSystemPaused()) {
+    console.warn(`[GravityClaw] ⏸ Pipeline is currently PAUSED. Skipping task ${taskId}.`);
+    return;
+  }
+
   let task: any;
   try {
     task = await prisma.agentTask.findUnique({
@@ -143,6 +156,7 @@ export async function runGravityClaw(taskId: string) {
     const brain = task.user?.contentBrain;
     const coreMemory = (brain?.orchestratorMemory as string) || "";
     const campaignPerfLog = (brain?.contentDna as any)?.campaignPerformanceLog || "";
+    const customAgents = Array.isArray((brain as any)?.caoCustomAgents) ? ((brain as any).caoCustomAgents as any[]) : [];
 
     // Build rich system context
     const brandContext = [
@@ -153,7 +167,12 @@ export async function runGravityClaw(taskId: string) {
       brain?.location ? `Location: ${brain.location}` : "",
     ].filter(Boolean).join("\n");
 
+    const caoStrategy = (brain as any)?.caoStrategy ? JSON.stringify((brain as any).caoStrategy) : "No active CAO strategy.";
+
     const systemContext = `${brandContext}
+
+CAO MASTER STRATEGY (Directives from the Chief AI Officer):
+${caoStrategy}
 
 CORE MEMORY (soul.md — permanent rules):
 ${coreMemory}
@@ -164,19 +183,30 @@ ${campaignPerfLog || "No prior campaigns yet."}
 Strict Goal: HIGH-QUALITY CONTENT that generates REAL LEADS. Cite local Nagpur context. Respect RERA.`;
 
     // Initialize workflow state
+    const baseSteps: AgentWorkflowStep[] = [
+      { agent: "ContentLead", status: "pending", retryCount: 0, messages: [] },
+      { agent: "ResearchSpecialist", status: "pending", retryCount: 0, messages: [] },
+      { agent: "Copywriter", status: "pending", retryCount: 0, messages: [] },
+      { agent: "SEOSpecialist", status: "pending", retryCount: 0, messages: [] },
+      { agent: "VisualDesigner", status: "pending", retryCount: 0, messages: [] },
+      { agent: "QCAuditor", status: "pending", retryCount: 0, messages: [] },
+      { agent: "DistributionLead", status: "pending", retryCount: 0, messages: [] },
+    ];
+
+    // Append CAO dynamically spawned agents if they exist
+    const dynamicSteps: AgentWorkflowStep[] = customAgents.map(ca => ({
+      agent: ca.roleName as any, // Cast to any to allow dynamic names
+      status: "pending",
+      retryCount: 0,
+      messages: [],
+      customPrompt: ca.systemPrompt // Store the prompt for execution
+    }));
+
     const workflow: WorkflowState = {
       taskId,
       goal: task.goal,
       systemContext,
-      steps: [
-        { agent: "ContentLead", status: "pending", retryCount: 0, messages: [] },
-        { agent: "ResearchSpecialist", status: "pending", retryCount: 0, messages: [] },
-        { agent: "Copywriter", status: "pending", retryCount: 0, messages: [] },
-        { agent: "SEOSpecialist", status: "pending", retryCount: 0, messages: [] },
-        { agent: "VisualDesigner", status: "pending", retryCount: 0, messages: [] },
-        { agent: "QCAuditor", status: "pending", retryCount: 0, messages: [] },
-        { agent: "DistributionLead", status: "pending", retryCount: 0, messages: [] },
-      ],
+      steps: [...baseSteps, ...dynamicSteps],
       currentStepIndex: 0,
       dynamicRedirects: [],
       performanceLog: {},
@@ -288,8 +318,22 @@ Return structured insights with clear section headers.`;
     workflow.steps[2].status = "running";
     await logUpdate(taskId, "✍️ Copywriter is drafting persona-specific, high-converting content...", 38, "Copywriter");
 
+    // ── Golden Loop Injection: Fetch proven viral examples ────────
+    let goldenExamplesBlock = "";
+    try {
+      const goldenExamples = await getTopGoldenExamples(task.user.id, undefined, 3);
+      goldenExamplesBlock = buildGoldenExamplesPromptBlock(goldenExamples);
+      if (goldenExamples.length > 0) {
+        await logUpdate(taskId, `🏆 Injected ${goldenExamples.length} Golden Example(s) into Copywriter prompt`, 39, "Copywriter");
+      }
+    } catch (err) {
+      console.warn("[GravityClaw] Golden Loop injection skipped:", err);
+    }
+
     const copywriterPrompt = `You are an elite Lead-Gen Copywriter for an Indian real estate brand.
 ${systemContext}
+
+${goldenExamplesBlock}
 
 CAMPAIGN BRIEF:
 ${contentLeadBrief}
@@ -523,13 +567,29 @@ Output ready-to-copy content blocks for each platform.`;
     workflow.steps[6].status = "done";
     workflow.steps[6].output = distributionOutput;
 
+    // ══════════════════════════════════════════════════════════════
+    // AGENT EXTRA: CAO Custom Dynamic Agents
+    // ══════════════════════════════════════════════════════════════
+    for (let i = baseSteps.length; i < workflow.steps.length; i++) {
+        const step = workflow.steps[i];
+        const ca = customAgents[i - baseSteps.length];
+        await logUpdate(taskId, `🤖 ${ca.roleName} (CAO Spawned Agent) is executing specialized task...`, 92 + (i * 1), ca.roleName);
+        
+        step.status = "running";
+        const dynamicPrompt = `${ca.systemPrompt}\n\n${systemContext}\n\nPREVIOUS OUTPUT: ${distributionOutput.substring(0, 500)}`;
+        const dynamicOutput = await callAgentWithRetry(ca.roleName as any, dynamicPrompt, `Process final output for specialist needs: ${task.goal}`);
+        
+        step.status = "done";
+        step.output = dynamicOutput;
+    }
+
     // ── Build Final Content Items ──────────────────────────────────
     const finalContent = [
       {
         id: "linkedin_post",
         platform: "LinkedIn",
         agent: "Copywriter + SEO",
-        text: (workflow.steps[2].output || "").substring(0, 500),
+        text: workflow.steps[2].output || "",
         qcScore: qcOutput.includes("8") || qcOutput.includes("9") ? 9 : 7,
         status: needsRevision ? "revised" : "approved",
       },
@@ -537,7 +597,7 @@ Output ready-to-copy content blocks for each platform.`;
         id: "instagram_caption",
         platform: "Instagram",
         agent: "Copywriter + Visual Designer",
-        text: (workflow.steps[4].output || "").substring(0, 300),
+        text: workflow.steps[4].output || "",
         qcScore: 8,
         status: "approved",
       },
@@ -545,7 +605,7 @@ Output ready-to-copy content blocks for each platform.`;
         id: "whatsapp_broadcast",
         platform: "WhatsApp",
         agent: "Copywriter + Distribution Lead",
-        text: distributionOutput.substring(0, 300),
+        text: distributionOutput || "",
         qcScore: 8,
         status: "approved",
       },
@@ -617,6 +677,12 @@ Check your ContentSathi Studio for full results.`;
     }
   } catch (err: any) {
     console.error("[GravityClaw CRASH]", err);
+    await notifyFounder({
+      type: "GRAVITY_CLAW_CRASH",
+      message: `Gravity Claw failed for task ${taskId}: ${err.message}`,
+      severity: "CRITICAL",
+      userId: task?.user?.id
+    });
     if (task) await failTask(taskId, err);
   }
 }

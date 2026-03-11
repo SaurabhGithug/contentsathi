@@ -4,9 +4,13 @@ import type { NextRequest } from "next/server";
 import { rateLimit, detectRouteCategory, RATE_LIMITS, rateLimitResponse } from "@/lib/rate-limiter";
 
 const PROTECTED_ROUTES = [
+  "/cao",
   "/settings",
   "/calendar",
   "/dashboard",
+  "/studio",
+  "/agents",
+  "/approvals",
   "/repurpose",
   "/generator",
   "/whatsapp-sequences",

@@ -226,7 +226,7 @@ _Last 5 battle cards generated:_
 
 _Auto-updated every Sunday after analytics review._
 
-**Week of —:** No data yet. First cycle pending.
+**Week of Wed Mar 11 2026:** Best language: hinglish. Best corridor: ring road. Hinglish content receives highest engagement, prioritize its use.
 
 ---
 

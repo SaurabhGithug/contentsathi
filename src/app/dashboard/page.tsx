@@ -142,6 +142,33 @@ export default function AgencyHQPage() {
         })}
       </div>
 
+      {/* ── CAO Strategy Banner ─────────────────────────────────────────── */}
+      <div className="bg-gradient-to-br from-indigo-900 via-slate-900 to-purple-900 rounded-3xl border border-indigo-400/20 shadow-xl overflow-hidden relative p-8">
+         <div className="absolute top-0 right-0 p-4 opacity-10">
+            <Sparkles className="w-24 h-24 text-white" />
+         </div>
+         <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
+            <div className="flex-shrink-0 w-20 h-20 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-inner">
+               <Target className="w-10 h-10 text-indigo-300" />
+            </div>
+            <div className="flex-1">
+               <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">Active Intelligence Directive</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.8)]" />
+               </div>
+               <h3 className="text-2xl font-black text-white mb-3 tracking-tight">Chief AI Officer Master Strategy</h3>
+               <p className="text-indigo-100/80 text-base font-medium leading-relaxed italic line-clamp-2 max-w-2xl border-l-2 border-indigo-500/30 pl-4 py-1">
+                  {stats?.brain?.caoStrategy ? (
+                     typeof stats.brain.caoStrategy === 'string' ? stats.brain.caoStrategy : (stats.brain.caoStrategy.market_insight || "Executing data-driven market infiltration strategy.")
+                  ) : "Directing the 7-agent team using Nagpur's latest real estate intelligence..."}
+               </p>
+            </div>
+            <Link href="/cao" className="px-8 py-4 bg-white text-indigo-900 font-black text-sm rounded-2xl hover:bg-indigo-50 transition-all shadow-xl hover:scale-105 active:scale-95 whitespace-nowrap group">
+               Steer Strategy <ArrowRight className="w-4 h-4 inline-block ml-1 group-hover:translate-x-1 transition-transform" />
+            </Link>
+         </div>
+      </div>
+
       {/* ── Pipeline Heatmap ───────────────────────────────────────────── */}
       <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-8 pt-6 pb-4">
@@ -277,7 +304,7 @@ export default function AgencyHQPage() {
           <div className="space-y-3">
             {[
               { label: "New Campaign",        href: "/studio",    emoji: "⚡", desc: "Brief the 7-agent team" },
-              { label: "Review Approvals",    href: "/approvals", emoji: "✅", desc: "3 items pending review" },
+              { label: "Review Approvals",    href: "/approvals", emoji: "✅", desc: pendingApprovals > 0 ? `${pendingApprovals} item${pendingApprovals !== 1 ? 's' : ''} pending review` : "No items pending" },
               { label: "Market Hunter",       href: "/market-watch", emoji: "🎯", desc: "Competitor analysis" },
               { label: "Asset Vault",         href: "/library",   emoji: "📦", desc: "All published content" },
               { label: "Calendar",            href: "/calendar",  emoji: "📅", desc: "Publishing schedule" },

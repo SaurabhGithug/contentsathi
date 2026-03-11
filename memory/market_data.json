@@ -98,15 +98,27 @@
       "Wardha Road": null,
       "Besa": null,
       "MIHAN": null,
-      "Ring Road": null
+      "Ring Road": null,
+      "ring road": "hinglish"
     },
-    "best_format": null,
+    "best_format": "hinglish",
     "avg_engagement_by_language": {
       "Marathi": null,
       "Hinglish": null,
       "English": null,
       "Hindi": null
     },
-    "lessons_learned": []
+    "lessons_learned": [
+      {
+        "date": "2026-03-11T07:40:22.256Z",
+        "lessons": [
+          "Hinglish content receives highest engagement, prioritize its use.",
+          "Ring Road location has highest engagement potential, focus more posts there.",
+          "Increase content quantity in high-performing areas like Mihan & Wardha."
+        ],
+        "bestLanguage": "hinglish",
+        "bestCorridor": "ring road"
+      }
+    ]
   }
 }

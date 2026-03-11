@@ -10,6 +10,7 @@ import {
   buildThinkerSystemPrompt, buildWriterSystemPrompt,
   FREE_TIER_PLATFORMS, FREE_TIER_LANGUAGES, FREE_TIER_MONTHLY_LIMIT,
 } from "@/lib/sarvam";
+import { getLiveIntelligenceForTopic, type LiveIntelligenceContext } from "@/lib/live-intelligence-db";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -189,6 +190,19 @@ export async function POST(req: Request) {
     );
   }
 
+  // ── LIVE INTELLIGENCE FETCH (runs before content generation) ───────────────
+  // This replaces static LLM training data with real scraped market signals.
+  // Pulls from the Apify-populated DB cache (<100ms) or falls back to Tavily.
+  let liveIntel: LiveIntelligenceContext | null = null;
+  try {
+    const cityMatch = brainContext.match(/City: ([^.]+)/);
+    const city = cityMatch?.[1]?.trim() || "Nagpur";
+    liveIntel = await getLiveIntelligenceForTopic(topic, city, dbUserId || undefined);
+    console.log(`[WORKFLOW] Live intel loaded. Fresh: ${liveIntel.isFromLiveData}. Signals: ${liveIntel.totalSourcesScraped}. Age: ${liveIntel.dataFreshnessMinutes}min`);
+  } catch (e) {
+    console.warn("[WORKFLOW] Live intel fetch failed (non-critical):", e);
+  }
+
   // ── SSE Stream Setup ───────────────────────────────────────────────────────
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -221,12 +235,18 @@ export async function POST(req: Request) {
             freeLangs.push("English"); // Fallback
           }
 
-          // ── PASS 1: Sarvam Thinker ────────────────────────────────
-          send({ step: 1, label: "Sarvam AI is analyzing your topic and audience..." });
+          // ── PASS 1: Sarvam Thinker (with Live Intelligence) ────────────────
+          send({ step: 1, label: `Sarvam AI analyzing topic + loading live market data (${liveIntel?.totalSourcesScraped || 0} signals)...` });
           let thinkingResults: any;
+
+          // Inject live intelligence context into Sarvam's system prompt
+          const liveIntelContext = liveIntel?.competitiveAmmo
+            ? `\n\nLIVE MARKET INTELLIGENCE (scraped from LinkedIn, Instagram, Google Maps today):\n${liveIntel.competitiveAmmo}\n\nVIRAL HOOKS WORKING RIGHT NOW:\n${(liveIntel.viralHooks || []).slice(0, 3).map((h, i) => `${i + 1}. "${h}"`).join("\n")}\n\nBUYER PAIN POINTS FROM REAL REVIEWS:\n${(liveIntel.buyerPainPoints || []).slice(0, 3).map((p, i) => `${i + 1}. ${p}`).join("\n")}\n\nUSE THIS LIVE DATA. Do NOT rely on generic assumptions.`
+            : "";
+
           try {
             thinkingResults = await callSarvamJSON(
-              "You are a senior real estate content strategist with 15 years of experience in Indian Tier 2 city markets including Nagpur, Pune, Jaipur, Indore, and Bhopal. You understand Indian home buyer psychology deeply. You know that first-time buyers fear black money and title issues. Investors want appreciation data. NRIs want trust and legal clarity. Land buyers want RERA, NA plots, and connectivity. You always inject specific local references — road names, infrastructure projects, landmarks — to make content feel authentic not generic.",
+              `You are a senior real estate content strategist with 15 years of experience in Indian Tier 2 city markets including Nagpur, Pune, Jaipur, Indore, and Bhopal. You understand Indian home buyer psychology deeply. You know that first-time buyers fear black money and title issues. Investors want appreciation data. NRIs want trust and legal clarity. Land buyers want RERA, NA plots, and connectivity. You always inject specific local references — road names, infrastructure projects, landmarks — to make content feel authentic not generic.${liveIntelContext}`,
               `Analyze this real estate content topic and return a JSON object only. No explanation before or after the JSON. Topic: ${topic}. Target audience: ${audience}. City: ${brainContext || "Nagpur"}.
 
 Return JSON with exactly these fields:
@@ -454,28 +474,47 @@ Brand Context: ${brainContext || "Not specified"}`;
         // ────────────────────────────────────────────────────────────────────
         let researchJson = cachedResearch;
         if (!researchJson) {
-          send({ step: 2, label: `Researching ${intentJson.cityContext || "local"} real estate context and buyer psychology...` });
+          send({ step: 2, label: `Loading live market intelligence (${liveIntel?.totalSourcesScraped || 0} signals) + deep research for ${intentJson.cityContext || "local"} market...` });
 
-          const researchSystem = `You are a Real Estate Research Agent specializing in Indian real estate markets (2025), especially Tier-2 cities.
+          // Build live intelligence injection for Gemini Research Agent
+          const geminiLiveContext = liveIntel?.competitiveAmmo
+            ? `\n\n═══ LIVE COMPETITIVE INTELLIGENCE (Fresh from Apify Scrapers) ═══\n${liveIntel.competitiveAmmo}\n\nTOP VIRAL HOOKS CURRENTLY WORKING ON SOCIAL MEDIA:\n${(liveIntel.viralHooks || []).map((h, i) => `${i + 1}. "${h}"`).join("\n")}\n\nBUYER PAIN POINTS (from actual Google reviews & forum posts, not assumptions):\n${(liveIntel.buyerPainPoints || []).map((p, i) => `${i + 1}. ${p}`).join("\n")}\n\nCOMPETITOR WEAKNESSES (scraped from negative reviews):\n${(liveIntel.competitorGaps || []).map((g, i) => `${i + 1}. ${g}`).join("\n")}\n\nWINNING CONTENT FORMATS RIGHT NOW:\n${(liveIntel.winningFormats || []).join(" | ")}\n\nNEWSJACKING ANGLES (use these as hooks):\n${(liveIntel.newsjackingAngles || []).join("\n")}\n═══ END LIVE INTELLIGENCE ═══\n\nCRITICAL: Your research MUST incorporate the above live data. Do NOT return generic market observations. The talking points, emotional hook, and local references must reflect what is actually happening in the market today based on the scraped signals above.`
+            : "";
+
+          const researchSystem = `You are a Real Estate Research Agent specializing in Indian real estate markets (2026), especially Tier-2 cities like Nagpur, Pune, Indore.
+You have access to LIVE market intelligence scraped from LinkedIn, Instagram, Google Maps, and YouTube.
 Return JSON with these exact keys:
 {
   "talkingPoints": ["string", "string", "string"],
   "objectionHandlers": [{"objection": "string", "response": "string"}, {"objection": "string", "response": "string"}],
   "localReferences": ["string", "string"],
-  "emotionalHook": "string — one powerful hook sentence",
-  "marketContext": "string — current 2025 market note"
-}`;
+  "emotionalHook": "string — one powerful hook sentence (use a live viral hook if available)",
+  "marketContext": "string — use live scraped data, not generic assumptions",
+  "liveSignal": "string — the single most powerful live market signal you detected that creates urgency"
+}${geminiLiveContext}`;
 
           const researchUser = `Topic: ${topic}
 Intent Analysis: ${JSON.stringify(intentJson)}
 City: ${intentJson.cityContext || "India"}
 Audience Type: ${intentJson.targetAudience}
-Brand: ${brainContext || "Real estate developer"}`;
+Brand: ${brainContext || "Real estate developer"}
+${liveIntel?.corridorSignals && Object.keys(liveIntel.corridorSignals).length > 0 ? `\nLIVE CORRIDOR SIGNALS:\n${JSON.stringify(liveIntel.corridorSignals, null, 2)}` : ""}`;
 
           try {
             researchJson = await callGeminiJSON(researchSystem, researchUser);
           } catch {
-            researchJson = { talkingPoints: [topic, "Prime location", "High appreciation"], objectionHandlers: [], localReferences: ["Upcoming infrastructure", "City growth"], emotionalHook: "Your dream home is closer than you think.", marketContext: "Strong buyer market in 2025." };
+            researchJson = {
+              talkingPoints: [
+                liveIntel?.viralHooks?.[0] || topic,
+                liveIntel?.buyerPainPoints?.[0] || "Prime location with appreciation potential",
+                "RERA-registered with full document transparency"
+              ],
+              objectionHandlers: [],
+              localReferences: Object.keys(liveIntel?.corridorSignals || {}).slice(0, 2) || ["Upcoming infrastructure", "City growth"],
+              emotionalHook: liveIntel?.viralHooks?.[0] || "Your dream home is closer than you think.",
+              marketContext: liveIntel?.newsjackingAngles?.[0] || "Strong buyer market in 2026.",
+              liveSignal: liveIntel?.newsjackingAngles?.[0] || "Market is actively moving.",
+            };
           }
         } else {
           send({ step: 2, label: "Using cached research context...", skip: true });
@@ -499,8 +538,20 @@ Brand: ${brainContext || "Real estate developer"}`;
         const platformPromises = targetPlatforms.map(async (platform: string) => {
           const platformRules = getPlatformRules(platform);
 
+          // Live signal injection into platform content writer
+          const livePlatformContext = liveIntel
+            ? `\n\nLIVE INTELLIGENCE TO USE (do NOT ignore this):
+- Best performing hook right now: "${liveIntel.viralHooks?.[0] || "Use urgency + local reference"}"
+- Top buyer pain point to address: ${liveIntel.buyerPainPoints?.[0] || "Hidden charges and delayed possession"}
+- Newsjacking angle: ${liveIntel.newsjackingAngles?.[0] || "Reference recent local development"}
+- Winning format for this platform: ${liveIntel.winningFormats?.[0] || "Strong hook + value + CTA"}
+- Live market signal: ${(researchJson as any)?.liveSignal || liveIntel.newsjackingAngles?.[0] || "Market is actively moving"}
+
+CRITICAL: This post must feel like it was written by someone who checked LinkedIn and the news TODAY, not 6 months ago. Reference current market reality.`
+            : "";
+
           // ── English Content via Gemini ──────────────────────
-          const engPrompt = `You are an elite social media copywriter for Indian real estate.
+          const engPrompt = `You are an elite social media copywriter for Indian real estate — one who checks social media, news, and competitor activity DAILY before writing a single word.
 
 Platform: ${platform}
 ${platformRules}
@@ -509,18 +560,21 @@ Topic: ${topic}
 Tone: ${tone}
 Goal: ${intentJson.primaryGoal}
 Target Audience: ${intentJson.targetAudience}
-Emotional Hook: ${researchJson.emotionalHook}
-Key Talking Points: ${researchJson.talkingPoints?.join(", ")}
+Emotional Hook (from live research): ${researchJson.emotionalHook}
+Key Talking Points (from live market scan): ${researchJson.talkingPoints?.join(", ")}
 City Context: ${intentJson.cityContext || "India"}
 ${intentJson.projectName ? `Project Name: ${intentJson.projectName}` : ""}
-${brainContext ? `Brand: ${brainContext}` : ""}
+${brainContext ? `Brand: ${brainContext}` : ""}${livePlatformContext}
 
 CRITICAL RULES:
-- Start with a STRONG hook. Never begin with "In today's world", "As we all know", "Needless to say"
+- Start with a STRONG hook from the live intelligence above — NOT a generic opener
+- Address a real buyer pain point you found in the live data
+- If there is a newsjacking angle, make it the context for urgency
 - End with a CLEAR, specific CTA — not just "contact us"
 - ${intentJson.projectName ? `Mention the project name "${intentJson.projectName}" naturally` : ""}
 - ${intentJson.cityContext ? `Reference ${intentJson.cityContext} naturally` : ""}
 - Write the COMPLETE post, not a template
+- NEVER write generic content. A reader must feel: "This person clearly knows what's happening in the market today."
 
 Write the ${platform} post in English (Do not start with or include the platform name in the content):`;
 

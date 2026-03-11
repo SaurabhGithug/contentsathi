@@ -360,7 +360,7 @@ function SettingsContent() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Settings &amp; Integrations</h1>
-        <p className="text-gray-500 mt-1">Configure your <strong>Gravity Claw</strong> AI team — brand, channels, language preferences and workspace integrations.</p>
+        <p className="text-gray-500 mt-1">Configure your <strong>ContentSathi AI</strong> team — brand profile, channels, language preferences and workspace integrations.</p>
       </div>
 
       <div className="flex flex-col md:flex-row gap-8">
@@ -1329,7 +1329,7 @@ function SettingsContent() {
           </div>
           <div>
             <h2 className="text-2xl font-black text-gray-900">Project Media & Knowledge Base</h2>
-            <p className="text-sm text-gray-500 font-medium">Upload development images, location maps, brochures, and videos. Gravity Claw uses these directly in messages and as AI context.</p>
+            <p className="text-sm text-gray-500 font-medium">Upload development images, location maps, brochures, and videos. ContentSathi AI uses these directly in messages and as AI context.</p>
           </div>
         </div>
 
@@ -1342,7 +1342,7 @@ function SettingsContent() {
             <p className="text-xs font-black text-emerald-800 uppercase tracking-wider mb-0.5">How This Works</p>
             <p className="text-xs font-medium text-emerald-700 leading-relaxed">
               <strong>Use in Chat:</strong> Share directly via WhatsApp or attach to generated posts. &nbsp;
-              <strong>Knowledge Base:</strong> Gravity Claw reads brochure text, image context, and location facts when generating content — so every post reflects your actual project, not generic copy.
+              <strong>Knowledge Base:</strong> ContentSathi AI reads brochure text, image context, and location facts when generating content — so every post reflects your actual project, not generic copy.
             </p>
           </div>
         </div>

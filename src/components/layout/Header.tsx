@@ -11,8 +11,41 @@ export function Header() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]); // Initialize as empty
+  const [isSystemPaused, setIsSystemPaused] = useState(false);
+  const [isPausing, setIsPausing] = useState(false);
+  
   const dropdownRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
+
+  // Fetch initial pause state
+  useEffect(() => {
+    fetch("/api/health")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && typeof data.systemPaused === "boolean") {
+          setIsSystemPaused(data.systemPaused);
+        }
+      })
+      .catch((err) => console.error("Health check failed", err));
+  }, []);
+
+  const togglePause = async () => {
+    setIsPausing(true);
+    try {
+      const res = await fetch("/api/health", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pause: !isSystemPaused }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) setIsSystemPaused(data.paused);
+    } catch (e) {
+      console.error("Failed to toggle pause", e);
+    } finally {
+      setIsPausing(false);
+    }
+  };
+
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -43,6 +76,25 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-4">
+        {/* Pause Button */}
+        <button
+          onClick={togglePause}
+          disabled={isPausing}
+          className={`px-3 py-1.5 rounded-full text-xs font-black tracking-wide border flex items-center gap-1.5 transition-colors ${
+            isSystemPaused 
+              ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' 
+              : 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
+          }`}
+        >
+          {isPausing ? (
+             <span className="w-3.5 h-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          ) : isSystemPaused ? (
+            "▶ Resume Agents"
+          ) : (
+            "⏸ Pause All Agents"
+          )}
+        </button>
+
         {/* Notifications */}
         <div className="relative" ref={notificationsRef}>
           <button 
