@@ -37,11 +37,12 @@ export interface RateLimitResult {
 
 /** Pre-configured limits per route category */
 export const RATE_LIMITS: Record<string, RateLimitConfig> = {
-  generate:  { maxRequests: 20,  windowSeconds: 3600 },   // 20/hr
-  publish:   { maxRequests: 50,  windowSeconds: 3600 },   // 50/hr
-  publicApi: { maxRequests: 100, windowSeconds: 3600 },   // 100/hr
-  auth:      { maxRequests: 10,  windowSeconds: 900 },    // 10/15min
-  payments:  { maxRequests: 5,   windowSeconds: 60 },     // 5/min
+  generate:      { maxRequests: 20,  windowSeconds: 3600 },   // 20/hr
+  publish:       { maxRequests: 50,  windowSeconds: 3600 },   // 50/hr
+  publicApi:     { maxRequests: 100, windowSeconds: 3600 },   // 100/hr
+  auth:          { maxRequests: 30,  windowSeconds: 900 },    // 30/15min (login attempts)
+  oauthRedirect: { maxRequests: 200, windowSeconds: 3600 },   // OAuth connect/callback — just redirects, not sensitive
+  payments:      { maxRequests: 5,   windowSeconds: 60 },     // 5/min
 };
 
 /**
@@ -99,6 +100,8 @@ export function rateLimitResponse(retryAfter: number) {
  * can look up the right config from RATE_LIMITS.
  */
 export function detectRouteCategory(pathname: string): string | null {
+  // OAuth connect/callback are just redirects — use generous limit
+  if (pathname.includes("/connect") || pathname.includes("/callback")) return "oauthRedirect";
   if (pathname.startsWith("/api/generate"))  return "generate";
   if (pathname.startsWith("/api/publish"))   return "publish";
   if (pathname.startsWith("/api/v1"))        return "publicApi";
