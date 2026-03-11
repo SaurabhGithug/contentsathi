@@ -111,30 +111,33 @@ function SettingsContent() {
   const [userId, setUserId] = useState<string | null>(null);
   const [showQRModal, setShowQRModal] = useState(false);
 
+  const [authFlashMessage, setAuthFlashMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
   useEffect(() => {
-    // Handle OAuth callback parameters
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const success = params.get("success");
-      const error = params.get("error");
-      
-      if (success) {
-        toast.success(`Successfully connected ${success.charAt(0).toUpperCase() + success.slice(1)}! 🚀`);
-        window.history.replaceState({}, document.title, window.location.pathname + "?tab=accounts");
-      }
-      
-      if (error) {
-        const errorMessages: Record<string, string> = {
-          oauth_denied: "Permission was denied. Please try again.",
-          token_failed: "Failed to exchange tokens with the platform.",
-          user_not_found: "Session error. Please login again.",
-          encryption_failed: "Security error while saving tokens.",
-          invalid_state: "Security verification failed. Please try again.",
-          session_expired: "Session expired. Please try connecting again."
-        };
-        toast.error(errorMessages[error] || "An error occurred during connection.");
-        window.history.replaceState({}, document.title, window.location.pathname + "?tab=accounts");
-      }
+    // Handle OAuth callback parameters securely via searchParams binding
+    const success = searchParams.get("success");
+    const error = searchParams.get("error");
+    
+    if (success) {
+      const msg = `Successfully connected ${success.charAt(0).toUpperCase() + success.slice(1)}! 🚀`;
+      toast.success(msg, { duration: 5000 });
+      setAuthFlashMessage({ type: "success", text: msg });
+      router.replace("/settings?tab=accounts", { scroll: false });
+    }
+    
+    if (error) {
+      const errorMessages: Record<string, string> = {
+        oauth_denied: "Permission was denied. Please try again.",
+        token_failed: "Failed to exchange tokens with the platform.",
+        user_not_found: "Session error. Please login again.",
+        encryption_failed: "Security error while saving tokens.",
+        invalid_state: "Security verification failed. Please try again.",
+        session_expired: "Session expired. Please try connecting again."
+      };
+      const msg = errorMessages[error] || "An error occurred during connection.";
+      toast.error(msg, { duration: 5000 });
+      setAuthFlashMessage({ type: "error", text: msg });
+      router.replace("/settings?tab=accounts", { scroll: false });
     }
 
     loadBrainData();
@@ -147,7 +150,7 @@ function SettingsContent() {
         if (u.platformLangPrefs?.transliterateRoman) setTransliterateRoman(true);
       })
       .catch(() => {});
-  }, []);
+  }, [searchParams, router]);
 
   const loadBrainData = async () => {
     try {
@@ -633,6 +636,26 @@ function SettingsContent() {
                 </div>
               </div>
               
+              {authFlashMessage && (
+                <div className={`mb-8 p-4 rounded-xl border flex items-start gap-3 ${
+                  authFlashMessage.type === "success" 
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-800" 
+                    : "bg-red-50 border-red-200 text-red-800"
+                }`}>
+                  {authFlashMessage.type === "success" ? (
+                    <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                  )}
+                  <div className="flex-1 font-semibold text-sm">
+                    {authFlashMessage.text}
+                  </div>
+                  <button onClick={() => setAuthFlashMessage(null)} className="opacity-50 hover:opacity-100">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
               {isLoadingAccounts ? (
                 <div className="py-20 flex flex-col items-center justify-center space-y-4">
                     <Loader2 className="w-10 h-10 text-indigo-600 animate-spin" />
