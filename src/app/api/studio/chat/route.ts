@@ -6,19 +6,75 @@ import { isValuationIntent, parsePlotFromMessage } from "@/app/api/studio/valuat
 export const runtime = "nodejs";
 export const maxDuration = 90;
 
-// Helper: detect if a message is a permanent instruction to update memory/soul.md
-function isPermanentInstruction(message: string): boolean {
-  const keywords = [
-    "from now on", "always", "never", "remember this", "permanently",
-    "rule:", "make it a rule", "going forward", "in the future",
-    "aage se", "hamesha", "yaad rakh", "ab se", "remember", "save this",
-    "update your rules", "update your memory", "keep in mind always",
-  ];
+// ── Operational Intent Detector ──────────────────────────────────────────────
+function isOperationalQuery(message: string): boolean {
   const lower = message.toLowerCase();
-  return keywords.some((kw) => lower.includes(kw));
+  return [
+    "connected", "account", "social account", "linkedin", "instagram", "whatsapp",
+    "is my", "check my", "show my", "how many", "how much", "status",
+    "posts generated", "content generated", "pipeline", "credits",
+    "published", "scheduled", "pending", "approvals", "connected accounts",
+    "mera account", "linked hai", "connect hua", "kitne posts",
+  ].some((t) => lower.includes(t));
 }
 
-// Helper: format INR amounts
+// ── DB-backed operational query ───────────────────────────────────────────────
+async function runOperationalQuery(message: string, userId?: string): Promise<string | null> {
+  const lower = message.toLowerCase();
+  if (!userId) return null;
+
+  try {
+    const isAccountQuery = ["connect", "account", "linkedin", "instagram", "whatsapp", "linked", "mera account"]
+      .some((k) => lower.includes(k));
+
+    if (isAccountQuery) {
+      const accounts = await (prisma.socialAccount as any).findMany({
+        where: { userId },
+        select: { platform: true, accountName: true, isActive: true, tokenExpiry: true },
+      }).catch(() => []);
+
+      if (accounts.length === 0) {
+        return `**No social accounts connected yet.**\n\nGo to **Settings → Accounts** to connect LinkedIn, Instagram, or WhatsApp.`;
+      }
+
+      const emoji: Record<string, string> = { linkedin: "💼", instagram: "📸", whatsapp: "💬", twitter: "🐦", x: "🐦", youtube: "▶️" };
+      const lines = accounts.map((a: any) => {
+        const expired = a.tokenExpiry && new Date(a.tokenExpiry) < new Date();
+        const status = !a.isActive ? "❌ Disconnected" : expired ? "⚠️ Token expired — reconnect" : "✅ Connected";
+        const name = a.platform?.charAt(0).toUpperCase() + a.platform?.slice(1);
+        return `${emoji[a.platform?.toLowerCase()] || "🔗"} **${name}** — ${a.accountName || "Unknown"} · ${status}`;
+      });
+
+      return `**Your Connected Accounts:**\n\n${lines.join("\n")}\n\n*Settings → Accounts to add or reconnect.*`;
+    }
+
+    const isStatsQuery = ["posts", "content", "generated", "published", "kitne", "pipeline"]
+      .some((k) => lower.includes(k));
+
+    if (isStatsQuery) {
+      const [total, published, pending] = await Promise.all([
+        prisma.generatedAsset.count({ where: { userId } }).catch(() => 0),
+        prisma.publishLog.count({ where: { userId, status: "SUCCESS" } }).catch(() => 0),
+        prisma.calendarItem.count({ where: { userId, status: { in: ["draft", "ready"] } } }).catch(() => 0),
+      ]);
+      return `**Content Stats:**\n\n| Metric | Count |\n|---|---|\n| Total Generated | **${total}** |\n| Published | **${published}** |\n| Pending / Draft | **${pending}** |`;
+    }
+  } catch (e: any) {
+    console.error("[CAO:OpQuery]", e.message);
+  }
+  return null;
+}
+
+// Helper: detect permanent instruction
+function isPermanentInstruction(message: string): boolean {
+  const lower = message.toLowerCase();
+  return ["from now on", "always", "never", "remember this", "permanently", "rule:",
+    "make it a rule", "going forward", "aage se", "hamesha", "yaad rakh",
+    "ab se", "remember", "save this", "update your rules", "update your memory"
+  ].some((kw) => lower.includes(kw));
+}
+
+// Helper: format INR
 function formatCr(v: number): string {
   if (v >= 10_000_000) return `₹${(v / 10_000_000).toFixed(2)} Cr`;
   if (v >= 100_000)    return `₹${(v / 100_000).toFixed(2)} L`;
@@ -141,6 +197,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ reply: valuationReply, mode: "valuation", memoryUpdated: false });
     }
 
+    // ── Operational Query Intercept (DB-backed) ──────────────────────────────
+    if (isOperationalQuery(message)) {
+      const opResult = await runOperationalQuery(message, userId);
+      if (opResult) {
+        const brainOp = userId
+          ? await prisma.contentBrain.findFirst({ where: { userId } })
+          : await prisma.contentBrain.findFirst({ orderBy: { updatedAt: "desc" } });
+        const histOp: Array<{ role: string; content: string }> =
+          Array.isArray(brainOp?.orchestratorChatHistory) ? (brainOp!.orchestratorChatHistory as any) : [];
+        const updHist = [...histOp, { role: "user", content: message }, { role: "assistant", content: opResult }].slice(-20);
+        if (brainOp) {
+          await prisma.contentBrain.update({ where: { id: brainOp.id }, data: { orchestratorChatHistory: updHist } });
+        }
+        return NextResponse.json({ reply: opResult, mode: "operational", memoryUpdated: false });
+      }
+    }
+
     // ── Standard Chat ────────────────────────────────────────────────────────
     const brain = userId
       ? await prisma.contentBrain.findFirst({ where: { userId } })
@@ -152,23 +225,24 @@ export async function POST(req: Request) {
 
     const isRule = isPermanentInstruction(message);
 
-    const systemPrompt = `You are the ContentSathi AI Co-Founder — a personal AI business partner for an Indian real estate content creator.
-You are deeply intelligent, proactive, and speak in warm Hinglish (Hindi + English).
+    const systemPrompt = `You are the ContentSathi CAO — the AI brain of an Indian real estate content platform.
+You are direct, sharp, and warm. You speak in Hinglish. You NEVER make up information.
 
-YOUR CORE MEMORY (soul.md):
+CRITICAL RULES — no exceptions:
+1. NEVER discuss NRI compliance, FEMA, RERA KYC, or tax documentation unless explicitly asked
+2. NEVER add "reply YES" or sales-funnel language
+3. NEVER say "I cannot access" for platform questions — the system handles data queries
+4. Keep answers SHORT — max 4-5 sentences unless a detailed analysis is needed
+5. If you don't know, say so directly without padding
+
+YOUR CORE MEMORY:
 ---
 ${currentMemory}
 ---
 
-${isRule ? `IMPORTANT: The user is giving a new permanent instruction. At the END of your response, add "[MEMORY_UPDATE]: <concise rule>". Do NOT include this in the visible response.` : ""}
+${isRule ? `At END of response, add "[MEMORY_UPDATE]: <rule>". Hidden from user.` : ""}
 
-Your capabilities:
-- Content strategy, topics, schedules, audience insights
-- Real estate market insights for Nagpur & Indian tier-2 cities
-- 🏗️ Plot/land valuation — just describe a plot and say "value estimate" or "kitna milega"
-- Dashboard and pipeline questions
-
-Respond warmly, concisely, like a smart business partner. Use emojis occasionally.`;
+You help with: content strategy · Nagpur real estate insights · plot valuation · platform features (generator, approvals, market watch, settings). Be like a sharp co-founder — direct, warm, no fluff.`;
 
     const historyContext = chatHistory
       .slice(-8)
