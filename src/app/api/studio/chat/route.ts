@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { callSarvamChat } from "@/lib/sarvam";
 import { isValuationIntent, parsePlotFromMessage } from "@/app/api/studio/valuate-plot/route";
@@ -161,7 +163,14 @@ async function runValuationEngine(message: string, userId?: string): Promise<str
 
 export async function POST(req: Request) {
   try {
-    const { message, userId } = await req.json();
+    const body = await req.json();
+    let { message, userId } = body;
+
+    // Use session user ID if not explicitly passed
+    if (!userId) {
+      const session = await getServerSession(authOptions);
+      if ((session?.user as any)?.id) userId = (session?.user as any).id;
+    }
 
     if (!message?.trim()) {
       return NextResponse.json({ error: "Message is required" }, { status: 400 });
