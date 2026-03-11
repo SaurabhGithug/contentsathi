@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { callSarvamChat } from "@/lib/sarvam";
 import { searchWeb } from "@/lib/tavily";
 import { marketHunter } from "@/lib/social-scraper";
+import { isOperationalQuery, runOperationalQuery } from "@/app/api/studio/chat/route";
+import { isValuationIntent, parsePlotFromMessage } from "@/app/api/studio/valuate-plot/route";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -44,6 +46,44 @@ export async function POST(req: Request) {
     }
     const campaignLog = (brain.contentDna as any)?.campaignLog?.slice(-3) || [];
     const chatHistory = Array.isArray(brain.orchestratorChatHistory) ? (brain.orchestratorChatHistory as any[]) : [];
+
+    // ── Operational Query Intercept (DB-backed) ──────────────────────────────
+    if (isOperationalQuery(message)) {
+      const opResult = await runOperationalQuery(message, user.id);
+      if (opResult) {
+        const updHist = [...chatHistory, { role: "user", content: message }, { role: "assistant", content: opResult }].slice(-20);
+        await prisma.contentBrain.update({ where: { id: brain.id }, data: { orchestratorChatHistory: updHist } });
+        return NextResponse.json({ reply: opResult, memoryUpdated: false });
+      }
+    }
+
+    // ── Valuation Intent Intercept ───────────────────────────────────────────
+    if (isValuationIntent(message)) {
+      const parsed = parsePlotFromMessage(message);
+      const { POST: valuatePost } = await import("@/app/api/studio/valuate-plot/route");
+      const syntheticReq = new Request("http://localhost/api/studio/valuate-plot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userQuery: message, corridor: parsed.corridor, areaSqFt: parsed.areaSqFt, isCornerPlot: parsed.isCornerPlot, shape: parsed.shape, location: parsed.corridor || "Nagpur", userId: user.id }),
+      });
+      const resVal = await valuatePost(syntheticReq);
+      const dataVal = await resVal.json();
+      
+      let valuationReply = "I tried the valuation engine but hit an error.";
+      if (!dataVal.error) {
+         valuationReply = `## 🏗️ CAO Plot Valuation Report\n\n`;
+         if (parsed.corridor) valuationReply += `**Corridor:** ${parsed.corridor} · **Circle Rate:** ₹${dataVal.circleRate}/sqft\n\n`;
+         if (dataVal.estimatedRangeLow > 0) {
+            valuationReply += `| **Market Rate** | ₹${dataVal.estimatedPPSF?.toLocaleString("en-IN")}/sqft |\n`;
+            valuationReply += `| **⚡ Fast-Sell Price** | **₹${(dataVal.fastSellPrice / 100000).toFixed(2)}L** |\n\n`;
+         }
+         valuationReply += `${dataVal.analysisNarrative || ""}`;
+      }
+      
+      const updHist = [...chatHistory, { role: "user", content: message }, { role: "assistant", content: valuationReply }].slice(-20);
+      await prisma.contentBrain.update({ where: { id: brain.id }, data: { orchestratorChatHistory: updHist } });
+      return NextResponse.json({ reply: valuationReply, memoryUpdated: false });
+    }
 
     // Check for research or social media search intent
     let extraContext = "";
