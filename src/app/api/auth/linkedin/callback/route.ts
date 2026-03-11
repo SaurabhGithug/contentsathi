@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(req: Request) {
+  const baseUrl = (process.env.NEXTAUTH_URL || "http://localhost:3000").trim();
   const { searchParams } = new URL(req.url);
   const code = searchParams.get("code");
   const state = searchParams.get("state"); // base64 encoded email
@@ -9,19 +10,19 @@ export async function GET(req: Request) {
 
   if (error || !code || !state) {
     const errorMsg = error === "user_cancelled_login" || error === "user_cancelled_authorize" ? "oauth_denied" : "token_failed";
-    return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/settings?tab=accounts&error=${errorMsg}`);
+    return NextResponse.redirect(`${baseUrl}/settings?tab=accounts&error=${errorMsg}`);
   }
 
   let email = "";
   try {
     email = Buffer.from(state, "base64").toString("utf8");
   } catch {
-    return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/settings?tab=accounts&error=invalid_state`);
+    return NextResponse.redirect(`${baseUrl}/settings?tab=accounts&error=invalid_state`);
   }
 
   const clientId = process.env.LINKEDIN_CLIENT_ID!;
   const clientSecret = process.env.LINKEDIN_CLIENT_SECRET!;
-  const redirectUri = `${process.env.NEXTAUTH_URL}/api/auth/linkedin/callback`;
+  const redirectUri = `${baseUrl}/api/auth/linkedin/callback`;
 
   // Exchange code for token
   const tokenRes = await fetch("https://www.linkedin.com/oauth/v2/accessToken", {
@@ -39,7 +40,7 @@ export async function GET(req: Request) {
 
   if (!tokenData.access_token) {
     console.error("[LinkedIn OAuth] Token exchange failed:", tokenData);
-    return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/settings?tab=accounts&error=token_failed`);
+    return NextResponse.redirect(`${baseUrl}/settings?tab=accounts&error=token_failed`);
   }
 
   // Get LinkedIn profile using modern OpenID Connect userinfo endpoint
@@ -50,7 +51,7 @@ export async function GET(req: Request) {
   const accountName = profile.name || `${profile.given_name} ${profile.family_name}`.trim();
 
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/settings?tab=accounts&error=user_not_found`);
+  if (!user) return NextResponse.redirect(`${baseUrl}/settings?tab=accounts&error=user_not_found`);
 
   const tokenExpiry = new Date(Date.now() + (tokenData.expires_in || 5184000) * 1000);
 
@@ -79,5 +80,5 @@ export async function GET(req: Request) {
     },
   });
 
-  return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/settings?tab=accounts&success=linkedin`);
+  return NextResponse.redirect(`${baseUrl}/settings?tab=accounts&success=linkedin`);
 }

@@ -8,7 +8,7 @@ export async function GET() {
   }
 
   const clientId = process.env.LINKEDIN_CLIENT_ID;
-  const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+  const baseUrl = (process.env.NEXTAUTH_URL || "http://localhost:3000").trim();
   const redirectUriStr = `${baseUrl}/api/auth/linkedin/callback`;
   const redirectUri = encodeURIComponent(redirectUriStr);
   
