@@ -89,7 +89,9 @@ export async function marketHunter(intent: string, userId?: string): Promise<Soc
     
     if (isLinkedIn || intent.toLowerCase().includes("post") || intent.toLowerCase().includes("social")) {
         const subject = intent.replace(/search|linkedin|posts|top|5|latest/gi, "").trim();
-        return await fetchLinkedInPosts(subject || "Nagpur Real Estate", userId);
+        const fallbackQueries = ["Nagpur Real Estate", "Wardha Road Plots", "MIHAN Investment", "Besa-Pipla Property"];
+        const finalQuery = subject || fallbackQueries[Math.floor(Math.random() * fallbackQueries.length)];
+        return await fetchLinkedInPosts(finalQuery, userId);
     }
 
     return [];

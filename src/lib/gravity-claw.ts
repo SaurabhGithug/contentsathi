@@ -50,6 +50,18 @@ export type WorkflowState = {
 // Max retries per agent before fallback/escalation
 const MAX_RETRIES = 2;
 
+// Standard Token Limits per Agent
+const TOKEN_LIMITS: Record<string, number> = {
+  ContentLead: 1500,
+  ResearchSpecialist: 2500,
+  Copywriter: 2000,
+  SEOSpecialist: 1500,
+  VisualDesigner: 2000,
+  QCAuditor: 1500,
+  DistributionLead: 1500,
+  Default: 1200
+};
+
 // ─── DB Helpers ────────────────────────────────────────────────────────────
 async function logUpdate(
   taskId: string,
@@ -97,7 +109,8 @@ async function callAgentWithRetry(
   retryCount = 0
 ): Promise<string> {
   try {
-    const result = await callSarvamChat(prompt, userMessage);
+    const limit = TOKEN_LIMITS[agentName] || TOKEN_LIMITS.Default;
+    const result = await callSarvamChat(prompt, userMessage, limit);
     if (!result || result.trim().length < 40) {
       throw new Error(`Agent ${agentName} returned empty/unusable output.`);
     }
@@ -171,6 +184,12 @@ export async function runGravityClaw(taskId: string) {
 
     const systemContext = `${brandContext}
 
+NAGPUR GROUNDING DATA (STRICT):
+- Key Corridors: Wardha Road, MIHAN, Amravati Road, Hingna Road, Outer Ring Road, Besa-Pipla, Jamtha, Koradi Road.
+- Major Hubs: Butibori Industrial Estate (MIDC), MIHAN SEZ, Metro Phase 2, Dr. Babasaheb Ambedkar Airport.
+- Real Estate Context: NMRDA sanctions, RERA registration numbers (format: P5050000XXXXX).
+- NO HALLUCINATIONS: Do not use names like "Satyameva Nagar" or "Buttegen". Use real locations.
+
 CAO MASTER STRATEGY (Directives from the Chief AI Officer):
 ${caoStrategy}
 
@@ -180,7 +199,9 @@ ${coreMemory}
 CAMPAIGN PERFORMANCE LOG (historical learnings):
 ${campaignPerfLog || "No prior campaigns yet."}
 
-Strict Goal: HIGH-QUALITY CONTENT that generates REAL LEADS. Cite local Nagpur context. Respect RERA.`;
+STRICT RULE: Your first priority is to extract REAL company names and proper nouns from the research data. 
+If the scraper provides real posts, identify the authors/builders. Do NOT use placeholders like "ABC Realty".
+Goal: HIGH-QUALITY CONTENT that generates REAL LEADS. Cite local Nagpur context. Respect RERA.`;
 
     // Initialize workflow state
     const baseSteps: AgentWorkflowStep[] = [
@@ -505,17 +526,17 @@ Format: [LINKEDIN_QC], [INSTAGRAM_QC], [WHATSAPP_QC] with verdict and score.`;
         "GravityClaw (Dynamic Rerouting)"
       );
 
-      // Targeted rewrite by Copywriter (only the flagged sections)
-      const revisionPrompt = `You are the Copywriter. The QC Auditor flagged these issues:
+      // Targeted rewrite by Copywriter (Full version)
+      const revisionPrompt = `You are the Copywriter. The QC Auditor flagged these issues in the previous draft:
 ${qcOutput}
 
-Rewrite ONLY the flagged sections. Keep the approved sections intact.
-Focus: Fix compliance issues, maintain brand voice, strengthen CTA.
-Return: Fixed versions only, clearly labeled.`;
+Rewrite ALL the posts (LinkedIn, Instagram, WhatsApp) to fix these issues. 
+Do NOT say "stays intact" or "no changes". Output the FULL NEW VERSION of every post so it is ready to publish.
+Focus: Fix compliance issues, maintain brand voice, strictly follow the grounding data.`;
 
-      const revisedCopy = await callAgentWithRetry("Copywriter", revisionPrompt, "Fix QC-flagged sections only.");
-      workflow.steps[2].output = `[REVISED AFTER QC]\n${revisedCopy}`;
-      await logUpdate(taskId, "✅ Targeted rewrite complete. Sending to Distribution Lead...", 86, "Distribution Lead");
+      const revisedCopy = await callAgentWithRetry("Copywriter", revisionPrompt, "Provide the COMPLETE revised campaign content.");
+      workflow.steps[2].output = revisedCopy; // Save the full revised version
+      await logUpdate(taskId, "✅ Full campaign content revised and merged. Sending to Distribution Lead...", 86, "Distribution Lead");
     }
 
     // QC → Distribution Lead
