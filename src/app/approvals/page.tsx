@@ -5,10 +5,11 @@ import MarkdownContent from "@/components/MarkdownContent";
 import {
   CheckCircle2, XCircle, RefreshCw, Eye, MessageSquare,
   TrendingUp, RotateCcw, Sparkles, Edit3, AlertTriangle,
-  ChevronDown, ChevronUp, Loader2, BadgeCheck
+  ChevronDown, ChevronUp, Loader2, BadgeCheck, Send
 } from "lucide-react";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
+import PublishModal from "@/components/PublishModal";
 
 type ApprovalItem = {
   id: string | number;
@@ -46,6 +47,7 @@ export default function ApprovalsPage() {
   const [processingId, setProcessingId] = useState<string | number | null>(null);
   const [proactiveSuggestion, setProactiveSuggestion] = useState<string>("");
   const [showAgentComms, setShowAgentComms] = useState<string | number | null>(null);
+  const [publishingPost, setPublishingPost] = useState<any>(null);
 
   useEffect(() => {
     fetchItems();
@@ -325,7 +327,14 @@ export default function ApprovalsPage() {
                   )}
 
                   {/* Action Buttons */}
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    <button
+                      onClick={() => setPublishingPost({ body: item.fullContent || item.preview, platform: item.platform || "General" })}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs transition-all shadow-sm bg-indigo-600 hover:bg-indigo-700 text-white"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      Instant Publish
+                    </button>
                     {ACTION_OPTIONS.map((action) => {
                       const Icon = action.icon;
                       return (
@@ -351,6 +360,16 @@ export default function ApprovalsPage() {
           </div>
         )}
       </div>
+
+      {publishingPost && (
+        <PublishModal 
+          post={publishingPost} 
+          onClose={() => setPublishingPost(null)}
+          onSuccess={(url) => {
+            // we keep it on the dashboard or we could remove it.
+          }}
+        />
+      )}
     </div>
   );
 }

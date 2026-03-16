@@ -248,7 +248,7 @@ Your tasks:
 1. Define the campaign objective in ONE sentence.
 2. Choose the primary audience segment to target (investors / first-time buyers / NRIs).
 3. List the 3 most effective content angles for this goal.
-4. Specify: formats needed (Instagram Reel, LinkedIn Article, WhatsApp Broadcast), language (Hinglish/English/Marathi).
+4. Identify WHICH platforms the user explicitly asked for (e.g. LinkedIn, Instagram, WhatsApp). ONLY list the platforms explicitly requested. If no specific platforms were requested, default to all three. DO NOT suggest platforms that were not requested. Specify the language (Hinglish/English/Marathi).
 5. Pass a RESEARCH QUERY to the Research Specialist — what SPECIFIC data should they find?
 
 Output a clear, structured brief that the Research Specialist can act on. Label sections clearly.`;
