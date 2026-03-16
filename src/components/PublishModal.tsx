@@ -78,14 +78,18 @@ export default function PublishModal({ post, onClose, onSuccess }: PublishModalP
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          postText: editedText,
+          body: editedText,
+          postText: editedText, // Keep postText for other platforms that might expect it
           imageUrl,
           calendarItemId: post.id,
-          // Extra payload for YouTube or WhatsApp if needed
+          // Extra payload for LinkedIn/YouTube/WhatsApp
           title: post.title || "Post Title",
           description: editedText,
           message: editedText,
           isShorts: p.includes("shorts"),
+          accessToken: accounts[0]?.accessToken,
+          providerAccountId: accounts[0]?.accountId,
+          pageId: accounts[0]?.pageId, // for facebook
         }),
       });
 

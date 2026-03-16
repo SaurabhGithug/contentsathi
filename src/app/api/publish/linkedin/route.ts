@@ -5,16 +5,39 @@ export async function POST(req: Request) {
     let calendarItemId: string | undefined;
     try {
       const bodyText = await req.json();
-      const { userId, title, body, imageUrl, accessToken, providerAccountId } = bodyText;
-      calendarItemId = bodyText.calendarItemId;
+      const { title, imageUrl, calendarItemId } = bodyText;
+      const bodyContent = bodyText.body || bodyText.postText;
+
+      let userId = bodyText.userId;
+      if (!userId) {
+        userId = req.headers.get("x-cron-user-id");
+      }
+
+      let accessToken = bodyText.accessToken;
+      let providerAccountId = bodyText.providerAccountId;
+
+    if (!accessToken || !providerAccountId) {
+      if (!userId) {
+        return NextResponse.json({ error: "User ID required to fetch LinkedIn credentials." }, { status: 400 });
+      }
+      
+      const account = await prisma.socialAccount.findFirst({
+        where: { userId, platform: 'linkedin', isActive: true }
+      });
+
+      if (!account || !account.accessToken || !account.accountId) {
+        return NextResponse.json({ error: "LinkedIn account not connected in database." }, { status: 400 });
+      }
+
+      accessToken = account.accessToken;
+      providerAccountId = account.accountId;
+    }
 
     if (!providerAccountId || !accessToken) {
       return NextResponse.json({ error: "LinkedIn account not connected." }, { status: 400 });
     }
 
     // Determine urn (either organization urn or person urn based on auth)
-    // We assume the stored providerAccountId is the correct Urn (e.g., 'urn:li:person:12345')
-    // If it's just raw IDs, we should wrap it. Often NextAuth LinkedIn provider returns just the ID.
     const authorUrn = providerAccountId.startsWith("urn:li:") 
       ? providerAccountId 
       : `urn:li:person:${providerAccountId}`;
@@ -90,7 +113,7 @@ export async function POST(req: Request) {
       specificContent: {
         "com.linkedin.ugc.ShareContent": {
           shareCommentary: {
-            text: body // LinkedIn feed share body
+            text: bodyContent // LinkedIn feed share body
           },
           shareMediaCategory: mediaUrn ? "IMAGE" : "NONE",
         }
