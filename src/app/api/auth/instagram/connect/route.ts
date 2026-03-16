@@ -1,16 +1,18 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { redirect } from "next/navigation";
 
-// ── Instagram / Facebook OAuth Connect ──────────────────────────────────────
-// Redirects user to Facebook OAuth for Instagram Content Publishing permissions.
+// ── Instagram OAuth Connect ──────────────────────────────────────────────────
+// Initiates the OAuth flow to get initial tokens from Facebook/Instagram.
 // Requires in .env:
 //   FACEBOOK_APP_ID=your_app_id
 //   FACEBOOK_APP_SECRET=your_app_secret
 //   NEXTAUTH_URL=http://localhost:3000
 
 export async function GET() {
-  const session = await getServerSession();
+  const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return NextResponse.redirect("/auth/login");
   }

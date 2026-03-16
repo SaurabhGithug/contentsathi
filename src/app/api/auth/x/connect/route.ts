@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import crypto from "crypto";
+import { prisma } from "@/lib/prisma";
+import { authOptions } from "@/lib/auth";
 
 import { pendingVerifiers } from "@/lib/twitter-cache";
 
 export async function GET() {
-  const session = await getServerSession();
+  const session = await getServerSession(authOptions);
   if (!session?.user?.email) return NextResponse.redirect("/auth/login");
 
   const clientId = process.env.TWITTER_CLIENT_ID;
