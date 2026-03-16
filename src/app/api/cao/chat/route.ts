@@ -153,6 +153,54 @@ CRITICAL DIRECTIVE:
     // Get CAO's semantic response (callSarvamChat already strips leaking <think> blocks)
     let caoReply = await callSarvamChat(fullPrompt, "Responding as CAO.");
 
+    // Detect Publish Intent and Execute
+    const isPublish = ["publish", "post it on", "post to", "share on"].some(kw => message.toLowerCase().includes(kw));
+
+    if (isPublish) {
+      let platform = null;
+      if (message.toLowerCase().includes("linkedin")) platform = "linkedin";
+      
+      if (platform === "linkedin") {
+        const account = await prisma.socialAccount.findFirst({
+          where: { userId: user.id, platform: "linkedin", isActive: true }
+        });
+
+        if (!account || !account.accessToken || !account.accountId) {
+          caoReply += `\n\n⚠️ **Publishing Failed**: Your LinkedIn account is not connected. Go to **Settings → Accounts** to connect it.`;
+        } else {
+          try {
+            // Ask Sarvam to extract/format ONLY the post text from the CAO reply
+            const extractPrompt = `You are a formatting assistant. Extract ONLY the raw text for the social media post from the following response. Do not include any conversational filler, intro, or outro. Give me the pure post content that is ready to be published.\\n\\nResponse:\\n${caoReply}`;
+            const postBody = await callSarvamChat(extractPrompt, "Extracting post body.");
+
+            const { POST: publishPost } = await import("@/app/api/publish/linkedin/route");
+            const syntheticReq = new Request("http://localhost/api/publish/linkedin", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                userId: user.id,
+                title: "New Update", 
+                body: postBody,
+                accessToken: account.accessToken,
+                providerAccountId: account.accountId
+              }),
+            });
+            const resVal = await publishPost(syntheticReq);
+            const dataVal = await resVal.json();
+            
+            if (dataVal.success) {
+               caoReply = postBody + `\n\n✅ **Successfully published to LinkedIn!**\n[View Post](${dataVal.platformPostUrl})`;
+            } else {
+               caoReply += `\n\n❌ **Failed to publish to LinkedIn**: ${dataVal.error || "Unknown error"}`;
+            }
+          } catch (e: any) {
+             console.error("CAO publish failed:", e);
+             caoReply += `\n\n❌ **Publishing error**: ${e.message}`;
+          }
+        }
+      }
+    }
+
     // Determine if the CAO deduced a new rule or sub-agent from the conversation
     // (This is a simplified extraction; could be a separate JSON LLM call for robustness)
     let newRuleExtract = null;

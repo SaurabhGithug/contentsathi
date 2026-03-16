@@ -71,7 +71,7 @@ export function Header() {
           <Menu className="w-5 h-5" />
         </button>
         <span className="text-sm font-medium text-gray-500 hidden sm:inline-block">
-          Your ContentSathi is ready. Roz Dikhte Raho. ✨
+          Your Content Partner is ready. ✨
         </span>
       </div>
 
@@ -80,18 +80,19 @@ export function Header() {
         <button
           onClick={togglePause}
           disabled={isPausing}
-          className={`px-3 py-1.5 rounded-full text-xs font-black tracking-wide border flex items-center gap-1.5 transition-colors ${
+          className={`px-4 py-1.5 rounded-full text-xs font-bold tracking-wide border flex items-center gap-2 transition-colors shadow-sm ${
             isSystemPaused 
               ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' 
-              : 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
+              : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
           }`}
         >
           {isPausing ? (
              <span className="w-3.5 h-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-          ) : isSystemPaused ? (
-            "▶ Resume Agents"
           ) : (
-            "⏸ Pause All Agents"
+            <>
+              <span className={`w-2 h-2 rounded-full ${isSystemPaused ? 'bg-red-500' : 'bg-emerald-500 animate-pulse'}`} />
+              {isSystemPaused ? "System Paused" : "Active Mode"}
+            </>
           )}
         </button>
 

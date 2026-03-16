@@ -30,19 +30,39 @@ import { useState, useEffect } from "react";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import * as Popover from "@radix-ui/react-popover";
 
-const navItems = [
-  { name: "Chief AI Officer",       href: "/cao",                icon: Shield },
-  { name: "Agency HQ",              href: "/dashboard",          icon: LayoutDashboard },
-  { name: "AI Studio",              href: "/studio",             icon: BrainCircuit },
-  { name: "Agent Team",             href: "/agents",             icon: Users },
-  { name: "Approvals & QC",         href: "/approvals",          icon: BookOpen },
-  { name: "Research · Hunter Mode", href: "/market-watch",       icon: TrendingUp },
-  { name: "Plot Value Estimator",   href: "/plot-valuator",      icon: Calculator, badge: "NEW" },
-  { name: "2026 Industry Report",   href: "/report",             icon: FileText },  
-  { name: "Asset Vault",            href: "/library",            icon: LayoutTemplate },
-  { name: "Content Calendar",       href: "/calendar",           icon: CalendarDays },
-  { name: "WhatsApp Setup",         href: "/settings?tab=accounts", icon: MessageCircle },
-  { name: "Analytics",              href: "/analytics",          icon: Activity },
+const navGroups = [
+  {
+    title: "CREATE",
+    items: [
+      { name: "AI Studio",              href: "/studio",             icon: BrainCircuit },
+      { name: "Content Calendar",       href: "/calendar",           icon: CalendarDays },
+      { name: "Asset Vault",            href: "/library",            icon: LayoutTemplate },
+    ]
+  },
+  {
+    title: "INTELLIGENCE",
+    items: [
+      { name: "Chief AI Officer",       href: "/cao",                icon: Shield },
+      { name: "Research · Hunter Mode", href: "/market-watch",       icon: TrendingUp },
+      { name: "2026 Industry Report",   href: "/report",             icon: FileText },  
+    ]
+  },
+  {
+    title: "MANAGE",
+    items: [
+      { name: "Dashboard",              href: "/dashboard",          icon: LayoutDashboard },
+      { name: "Agent Team",             href: "/agents",             icon: Users },
+      { name: "Approvals & QC",         href: "/approvals",          icon: BookOpen },
+      { name: "Analytics",              href: "/analytics",          icon: Activity },
+    ]
+  },
+  {
+    title: "TOOLS",
+    items: [
+      { name: "Plot Value Estimator",   href: "/plot-valuator",      icon: Calculator, badge: "NEW" },
+      { name: "WhatsApp Setup",         href: "/settings?tab=accounts", icon: MessageCircle },
+    ]
+  }
 ];
 
 import { BrainCircuit } from "lucide-react";
@@ -88,36 +108,43 @@ export function Sidebar() {
         </div>
 
         {/* Main nav */}
-        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-          {navItems.map((item: any) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-sm font-medium",
-                  isActive
-                    ? "bg-indigo-50 text-indigo-700 shadow-sm"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                )}
-              >
-                <item.icon
-                  className={cn("w-4.5 h-4.5 shrink-0", isActive ? "text-indigo-600" : "text-gray-400")}
-                  style={{ width: "1.125rem", height: "1.125rem" }}
-                />
-                {item.name}
-                {item.badge && (
-                  <span className="ml-auto text-[9px] font-black bg-purple-500 text-white px-1.5 py-0.5 rounded-full">
-                    {item.badge}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto">
+          {navGroups.map((group, groupIdx) => (
+            <div key={groupIdx} className="space-y-1">
+              <p className="px-3 text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">
+                {group.title}
+              </p>
+              {group.items.map((item: any) => {
+                const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-sm font-medium",
+                      isActive
+                        ? "bg-indigo-50 text-indigo-700 shadow-sm"
+                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                    )}
+                  >
+                    <item.icon
+                      className={cn("w-4.5 h-4.5 shrink-0", isActive ? "text-indigo-600" : "text-gray-400")}
+                      style={{ width: "1.125rem", height: "1.125rem" }}
+                    />
+                    {item.name}
+                    {item.badge && (
+                      <span className="ml-auto text-[9px] font-black bg-purple-500 text-white px-1.5 py-0.5 rounded-full">
+                        {item.badge}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
 
           {/* Divider */}
-          <div className="border-t border-gray-100 my-2" />
+          <div className="border-t border-gray-100 my-4" />
 
           <Link
             href="/pricing"
@@ -186,7 +213,7 @@ export function Sidebar() {
                             {buttonContent}
                           </Popover.Trigger>
                           <Popover.Portal>
-                            <Popover.Content sideOffset={5} className="bg-white rounded-xl shadow-lg border border-gray-100 p-3 z-50 text-sm w-48 animate-in fade-in zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=closed]:zoom-out-95">
+                            <Popover.Content sideOffset={5} className="bg-white rounded-xl shadow-lg border border-gray-100 p-3 z-50 text-sm w-48 transition-all">
                               <p className="font-semibold text-gray-900 mb-1">{platformName}</p>
                               <p className="text-gray-500 text-xs mb-3">Currently connected</p>
                               <Link href="/settings">
@@ -206,7 +233,7 @@ export function Sidebar() {
                     </Tooltip.Trigger>
                     {/* Only show tooltip on hover. If Popover opens, it naturally handles focus too */}
                     <Tooltip.Portal>
-                      <Tooltip.Content sideOffset={5} className="bg-gray-900 text-white text-xs px-2 py-1 rounded shadow-sm z-50 animate-in fade-in">
+                      <Tooltip.Content sideOffset={5} className="bg-gray-900 text-white text-xs px-2 py-1 rounded shadow-sm z-50">
                         {platformName} — {isConnected ? "Connected" : "Click to connect"}
                         <Tooltip.Arrow className="fill-gray-900" />
                       </Tooltip.Content>
