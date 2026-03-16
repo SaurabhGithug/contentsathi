@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
+import { encryptToken } from "@/lib/encryption";
 
 // ── Instagram OAuth Callback ─────────────────────────────────────────────────
 // Facebook redirects here with ?code=... after user approves the OAuth dialog.
@@ -73,7 +74,6 @@ export async function GET(req: Request) {
 
   const tokenExpiry = new Date(Date.now() + expiresIn * 1000);
 
-  const { encryptToken } = require("@/lib/encryption");
   let encryptedToken;
   try {
     encryptedToken = encryptToken(accessToken);

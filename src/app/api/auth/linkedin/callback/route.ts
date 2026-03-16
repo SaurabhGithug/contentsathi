@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { encryptToken } from "@/lib/encryption";
 
 export async function GET(req: Request) {
   const baseUrl = (process.env.NEXTAUTH_URL || "http://localhost:3000").trim();
@@ -65,7 +66,6 @@ export async function GET(req: Request) {
 
     const tokenExpiry = new Date(Date.now() + (tokenData.expires_in || 5184000) * 1000);
 
-    const { encryptToken } = require("@/lib/encryption");
     const encryptedAccess = encryptToken(tokenData.access_token);
     const encryptedRefresh = tokenData.refresh_token ? encryptToken(tokenData.refresh_token) : null;
 

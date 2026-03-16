@@ -36,8 +36,8 @@ export default function PublishModal({ post, onClose, onSuccess }: PublishModalP
         let normPlatform = post.platform.toLowerCase();
         if (normPlatform.includes("youtube")) normPlatform = "youtube";
         if (normPlatform.includes("twitter") || normPlatform === "x") normPlatform = "x";
-        
-        const matchedAccounts = data.filter((a: any) => a.platform === normPlatform);
+        const accountList = Array.isArray(data) ? data : (data.accounts || []);
+        const matchedAccounts = accountList.filter((a: any) => a.platform === normPlatform);
         setAccounts(matchedAccounts);
       } catch (err) {
         setError("Could not load connected accounts.");

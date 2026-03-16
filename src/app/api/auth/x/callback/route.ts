@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { encryptToken } from "@/lib/encryption";
 import { pendingVerifiers } from "@/lib/twitter-cache";
 
 export async function GET(req: Request) {
@@ -62,7 +63,6 @@ export async function GET(req: Request) {
 
   const tokenExpiry = new Date(Date.now() + (tokenData.expires_in || 7200) * 1000);
 
-  const { encryptToken } = require("@/lib/encryption");
   const encryptedAccess = encryptToken(tokenData.access_token);
   const encryptedRefresh = tokenData.refresh_token ? encryptToken(tokenData.refresh_token) : null;
 
