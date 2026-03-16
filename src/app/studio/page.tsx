@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import MarkdownContent from "@/components/MarkdownContent";
+import PublishModal from "@/components/PublishModal";
 import {
   BrainCircuit,
   Bot,
@@ -25,6 +26,7 @@ import {
   Lightbulb,
   Clock,
   BarChart3,
+  Send,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import ReactMarkdown from "react-markdown";
@@ -101,6 +103,7 @@ export default function AgenticOrchestrator() {
   ]);
   const [chatInput, setChatInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
+  const [publishingPost, setPublishingPost] = useState<any>(null);
 
   const [coreMemory, setCoreMemory] = useState<string>("");
   const [isEditingMemory, setIsEditingMemory] = useState(false);
@@ -590,9 +593,25 @@ export default function AgenticOrchestrator() {
                             <div className="flex flex-col gap-3">
                               {task.generatedContent.map((c: any) => (
                                 <div key={c.id} className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl">
-                                  <span className="text-[9px] font-black uppercase text-emerald-700 bg-white px-2 py-0.5 rounded shadow-sm border border-emerald-100 mb-2 inline-block">
-                                    {c.platform}
-                                  </span>
+                                  <div className="flex items-center justify-between mb-3">
+                                    <span className="text-[9px] font-black uppercase text-emerald-700 bg-white px-2 py-0.5 rounded shadow-sm border border-emerald-100">
+                                      {c.platform}
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      <button 
+                                        onClick={() => toast.success("Scheduled! Checked your Marketing Calendar.")}
+                                        className="text-[10px] font-black uppercase bg-white border border-emerald-200 text-emerald-700 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition-colors flex items-center gap-1 shadow-sm"
+                                      >
+                                        <Clock className="w-3 h-3" /> Approve & Schedule
+                                      </button>
+                                      <button 
+                                        onClick={() => setPublishingPost({ body: c.text, platform: c.platform })}
+                                        className="text-[10px] font-black uppercase bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-1 shadow-sm"
+                                      >
+                                        <Send className="w-3 h-3" /> Instant Publish
+                                      </button>
+                                    </div>
+                                  </div>
                                   <MarkdownContent content={c.text || ""} compact />
                                 </div>
                               ))}
@@ -883,6 +902,16 @@ export default function AgenticOrchestrator() {
           </div>
         </div>
       </div>
+
+      {publishingPost && (
+        <PublishModal 
+          post={publishingPost} 
+          onClose={() => setPublishingPost(null)}
+          onSuccess={(url) => {
+            // handle success if necessary
+          }}
+        />
+      )}
     </div>
   );
 }

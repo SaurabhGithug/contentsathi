@@ -366,11 +366,13 @@ QC AUDIT NOTES TO AVOID:
 ${microAudit.issues.join(", ") || "None"}
 
 Your tasks:
-1. Write a LINKEDIN ARTICLE HOOK (300 chars, investor-focused, authoritative tone).
-2. Write an INSTAGRAM CAPTION (120 chars + 5 hashtags, aspirational, Hinglish).
-3. Write a WHATSAPP BROADCAST message (friendly, direct CTA, first-person from agent).
-4. For each piece, attach: (a) a suggested alternative hook, (b) primary CTA.
-5. Flag any area where SEO keywords should be integrated — use [SEO_QUERY: keyword] marker.
+1. Identify WHICH platforms are specifically requested in the CAMPAIGN BRIEF.
+2. ONLY write content for the platforms requested. DO NOT write content for unrequested platforms.
+3. If LinkedIn is requested, write a LINKEDIN ARTICLE HOOK (300 chars, investor-focused, authoritative tone) and full content.
+4. If Instagram is requested, write an INSTAGRAM CAPTION (120 chars + 5 hashtags, aspirational, Hinglish).
+5. If WhatsApp is requested, write a WHATSAPP BROADCAST message (friendly, direct CTA, first-person from agent).
+6. For each piece, attach: (a) a suggested alternative hook, (b) primary CTA.
+7. Flag any area where SEO keywords should be integrated — use [SEO_QUERY: keyword] marker.
 
 Make it specific to Nagpur / Saraswati Nagri context. Use emotional triggers. Strong CTA required.`;
 
@@ -411,12 +413,13 @@ COPYWRITER'S KEYWORD QUERY: "investment plots Nagpur" vs "building dream homes" 
 
 Your tasks:
 1. Answer the Copywriter's keyword priority question with data.
-2. Add primary keyword (main search term), 3 secondary keywords, and 1 question-format keyword for each piece.
-3. Optimize the LinkedIn Article title for Google search (<60 chars).
-4. Generate 10 Instagram hashtags (mix of: local, niche, broad).
-5. Add a YouTube description template (if video is planned) with timestamps and keywords.
+2. Review the COPYWRITER'S DRAFT to see which platforms were generated. ONLY generate metadata for platforms present in the draft.
+3. If LinkedIn is present: Add primary keyword, 3 secondary keywords, and optimize the LinkedIn Article title for Google search (<60 chars).
+4. If Instagram is present: Add primary keyword, 3 secondary keywords, and generate 10 Instagram hashtags (mix of: local, niche, broad).
+5. If WhatsApp is present: Add primary/secondary keywords for internal use.
+6. If YouTube is mentioned: Add a YouTube description template with timestamps and keywords.
 
-Label each section by platform: [LINKEDIN], [INSTAGRAM], [WHATSAPP], [YOUTUBE].`;
+Label each section by platform: [LINKEDIN], [INSTAGRAM], [WHATSAPP], [YOUTUBE], but ONLY if writing for that platform.`;
 
     const seoOutput = await callAgentWithRetry(
       "SEOSpecialist",
@@ -452,12 +455,13 @@ COPY:
 ${copywriterOutput.substring(0, 500)}
 
 Your tasks:
-1. Generate 3 AI image prompts (for Midjourney/DALL-E) — one per platform (LinkedIn, Instagram, WhatsApp). Make them photo-realistic and set in Nagpur.
-2. For the Instagram Carousel, suggest: number of slides, slide text (10 words each), and CTA slide.
-3. For YouTube: suggest a 30-sec Reel storyboard — shot descriptions (outdoor plot, aerial drone, happy family).
-4. Suggest brand colors overlay and fonts.
+1. Review the input COPY and SEO. Identify WHICH platforms are actually present.
+2. ONLY generate 1 AI image prompt (for Midjourney/DALL-E) per platform present in the copy. Make them photo-realistic and set in Nagpur.
+3. If an Instagram Carousel is present, suggest: number of slides, slide text (10 words each), and CTA slide.
+4. If YouTube is present: suggest a 30-sec Reel storyboard — shot descriptions (outdoor plot, aerial drone, happy family).
+5. Suggest brand colors overlay and fonts.
 
-Format clearly: [LINKEDIN_IMAGE], [INSTAGRAM_CAROUSEL], [YOUTUBE_REEL].`;
+Format clearly: [LINKEDIN_IMAGE], [INSTAGRAM_CAROUSEL], [WHATSAPP_IMAGE], [YOUTUBE_REEL] (ONLY use the labels corresponding to the requested platforms).`;
 
     const visualOutput = await callAgentWithRetry(
       "VisualDesigner",
@@ -496,14 +500,15 @@ VISUAL ASSETS:
 ${visualOutput.substring(0, 300)}
 
 Your tasks:
-1. RERA Compliance: Flag any price claims, guarantee statements, or superlatives that violate Indian real estate regulations.
-2. Fact-Check: Are any stats, percentages, or claims unverifiable? Flag them.
-3. Brand Consistency: Does tone match soul.md guidelines?
-4. Quality Score: Rate each piece 1-10 with one-line reasoning.
-5. Final verdict per piece: APPROVED / NEEDS_REVISION (with specific fix instructions).
-6. If NEEDS_REVISION: specify WHICH agent should rewrite and WHAT to fix.
+1. Identify which platforms are present in the provided copy. ONLY audit those platforms.
+2. RERA Compliance: Flag any price claims, guarantee statements, or superlatives that violate Indian real estate regulations.
+3. Fact-Check: Are any stats, percentages, or claims unverifiable? Flag them.
+4. Brand Consistency: Does tone match soul.md guidelines?
+5. Quality Score: Rate each piece 1-10 with one-line reasoning.
+6. Final verdict per piece: APPROVED / NEEDS_REVISION (with specific fix instructions).
+7. If NEEDS_REVISION: specify WHICH agent should rewrite and WHAT to fix.
 
-Format: [LINKEDIN_QC], [INSTAGRAM_QC], [WHATSAPP_QC] with verdict and score.`;
+Format: [LINKEDIN_QC], [INSTAGRAM_QC], [WHATSAPP_QC] (only for present platforms) with verdict and score.`;
 
     const qcOutput = await callAgentWithRetry(
       "QCAuditor",
@@ -530,8 +535,8 @@ Format: [LINKEDIN_QC], [INSTAGRAM_QC], [WHATSAPP_QC] with verdict and score.`;
       const revisionPrompt = `You are the Copywriter. The QC Auditor flagged these issues in the previous draft:
 ${qcOutput}
 
-Rewrite ALL the posts (LinkedIn, Instagram, WhatsApp) to fix these issues. 
-Do NOT say "stays intact" or "no changes". Output the FULL NEW VERSION of every post so it is ready to publish.
+Rewrite ONLY the flagged posts to fix these issues. Output the FULL NEW VERSION of those posts. 
+Do NOT write posts for unflagged platforms, but keep their original content in your output so it is complete.
 Focus: Fix compliance issues, maintain brand voice, strictly follow the grounding data.`;
 
       const revisedCopy = await callAgentWithRetry("Copywriter", revisionPrompt, "Provide the COMPLETE revised campaign content.");
@@ -571,14 +576,15 @@ QC REPORT:
 ${qcOutput.substring(0, 200)}
 
 Your tasks:
-1. Format each piece specifically for its platform (LinkedIn, Instagram, WhatsApp — character limits, formatting rules).
-2. Generate an optimal posting schedule: day, time (IST), rationale.
-3. For WhatsApp: write the broadcast list message with personalizable fields {Name}, {Location}.
-4. For LinkedIn: add call-to-comment engagement hook at the end.
-5. Suggest A/B test variant for Instagram caption (slightly different opening hook).
-6. Flag: does this campaign need a follow-up post in 3 days? If yes, suggest topic.
+1. Identify which platforms are present in the FINAL APPROVED CONTENT. ONLY process those platforms.
+2. Format each piece specifically for its platform (LinkedIn, Instagram, WhatsApp — character limits, formatting rules).
+3. Generate an optimal posting schedule: day, time (IST), rationale for those platforms.
+4. If WhatsApp is present: write the broadcast list message with personalizable fields {Name}, {Location}.
+5. If LinkedIn is present: add call-to-comment engagement hook at the end.
+6. If Instagram is present: Suggest A/B test variant for Instagram caption.
+7. Flag: does this campaign need a follow-up post in 3 days? If yes, suggest topic.
 
-Output ready-to-copy content blocks for each platform.`;
+Output ready-to-copy content blocks for each requested platform, labeled with [PLATFORM_NAME_FINAL].`;
 
     const distributionOutput = await callAgentWithRetry(
       "DistributionLead",
@@ -605,32 +611,52 @@ Output ready-to-copy content blocks for each platform.`;
     }
 
     // ── Build Final Content Items ──────────────────────────────────
-    const finalContent = [
-      {
+    const finalContent = [];
+    
+    if (distributionOutput.toLowerCase().includes("linkedin") || workflow.steps[2].output?.toLowerCase().includes("linkedin")) {
+      finalContent.push({
         id: "linkedin_post",
         platform: "LinkedIn",
         agent: "Copywriter + SEO",
         text: workflow.steps[2].output || "",
         qcScore: qcOutput.includes("8") || qcOutput.includes("9") ? 9 : 7,
         status: needsRevision ? "revised" : "approved",
-      },
-      {
+      });
+    }
+
+    if (distributionOutput.toLowerCase().includes("instagram") || workflow.steps[4].output?.toLowerCase().includes("instagram")) {
+      finalContent.push({
         id: "instagram_caption",
         platform: "Instagram",
         agent: "Copywriter + Visual Designer",
         text: workflow.steps[4].output || "",
         qcScore: 8,
         status: "approved",
-      },
-      {
+      });
+    }
+
+    if (distributionOutput.toLowerCase().includes("whatsapp")) {
+      finalContent.push({
         id: "whatsapp_broadcast",
         platform: "WhatsApp",
         agent: "Copywriter + Distribution Lead",
         text: distributionOutput || "",
         qcScore: 8,
         status: "approved",
-      },
-    ];
+      });
+    }
+
+    // Fallback if none matched (unlikely but safe)
+    if (finalContent.length === 0) {
+      finalContent.push({
+        id: "generated_content",
+        platform: "General",
+        agent: "Distribution Lead",
+        text: distributionOutput || "",
+        qcScore: 8,
+        status: "approved",
+      });
+    }
 
     await logUpdate(
       taskId,
