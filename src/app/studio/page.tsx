@@ -501,14 +501,59 @@ export default function AgenticOrchestrator() {
                       </div>
                     </div>
 
-                    {task.status === "processing" && (
-                      <div className="h-1.5 w-full bg-gray-100">
-                        <div
-                          className="h-full bg-indigo-500 transition-all duration-1000 ease-in-out"
-                          style={{ width: `${task.progress}%` }}
-                        />
+                    <div className="bg-white px-5 py-6 border-b border-gray-100">
+                      <div className="flex items-center justify-between text-[10px] font-black uppercase text-gray-400 mb-4 tracking-widest">
+                        <span>Live Agent Pipeline</span>
+                        <span className={task.status === "completed" ? "text-emerald-600" : "text-indigo-600"}>{task.progress}% Overall Progress</span>
                       </div>
-                    )}
+                      <div className="flex flex-wrap sm:flex-nowrap items-start justify-between gap-1 relative">
+                        {[
+                          { name: "Brief", role: "Content Lead", p: 5, icon: "🧠" },
+                          { name: "Research", role: "Search", p: 14, icon: "🔍" },
+                          { name: "Copy", role: "Writer", p: 38, icon: "✍️" },
+                          { name: "SEO", role: "Optimizer", p: 52, icon: "🎯" },
+                          { name: "Visuals", role: "Designer", p: 65, icon: "🎨" },
+                          { name: "QC", role: "Auditor", p: 78, icon: "✅" },
+                          { name: "Dispatch", role: "Distributor", p: 90, icon: "🚀" },
+                        ].map((step, idx, arr) => {
+                          const nextP = arr[idx + 1]?.p || 100;
+                          const isDone = task.progress >= nextP || task.status === "completed";
+                          const isActive = task.progress >= step.p && task.progress < nextP && task.status === "processing";
+                          const isPending = !isDone && !isActive;
+
+                          return (
+                            <div key={step.name} className="flex-1 flex flex-col items-center gap-2 relative z-10 w-[14%]">
+                              {/* Connector line behind */}
+                              {idx < arr.length - 1 && (
+                                <div className={`hidden sm:block absolute top-5 left-[50%] w-full h-1 -mt-[2px] -z-10 rounded-r-full ${
+                                  isDone ? "bg-emerald-100" : "bg-gray-100"
+                                }`}>
+                                  {isActive && (
+                                    <div className="h-full bg-indigo-400 animate-pulse rounded-r-full w-full" style={{ width: '50%' }} />
+                                  )}
+                                </div>
+                              )}
+                              
+                              {/* Icon node */}
+                              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-lg relative transition-all duration-500 shadow-sm ${
+                                isDone ? "bg-emerald-50 border border-emerald-200" :
+                                isActive ? "bg-indigo-600 text-white shadow-indigo-300 shadow-lg scale-110 -translate-y-1" :
+                                "bg-gray-50 border border-gray-100 opacity-60 grayscale"
+                              }`}>
+                                 {isActive && <div className="absolute -inset-1 bg-indigo-500 rounded-2xl opacity-20 animate-ping" />}
+                                 <span className="relative z-10 drop-shadow-sm">{step.icon}</span>
+                              </div>
+                              
+                              {/* Text labels */}
+                              <div className={`text-center transition-all ${isActive ? "opacity-100 translate-y-1" : "opacity-80"} w-full`}>
+                                 <p className={`text-[10px] font-black uppercase tracking-wider truncate mb-0.5 ${isActive ? "text-indigo-600" : isDone ? "text-emerald-700" : "text-gray-400"}`}>{step.name}</p>
+                                 <p className={`text-[8px] font-bold text-gray-400 truncate hidden md:block`}>{step.role}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
 
                     <div className="p-5 flex flex-col md:flex-row gap-6">
                       <div className="flex-1 space-y-2 max-h-48 overflow-y-auto pr-2">
