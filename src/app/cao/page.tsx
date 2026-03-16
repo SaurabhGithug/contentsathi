@@ -320,10 +320,38 @@ export default function CAODashboard() {
                            </div>
                            <span className="font-medium mt-1">{caoState.strategy.reasoning || "Self-correction in progress."}</span>
                         </div>
-                        
-                        <div className="prose prose-sm max-w-none text-[11px] bg-gray-50 p-3 rounded-xl border border-gray-100 max-h-48 overflow-y-auto">
-                           <MarkdownContent content={JSON.stringify(caoState.strategy, null, 2)} compact />
-                        </div>
+                                                {/* Structured strategy fields — no raw JSON */}
+                         <div className="space-y-2">
+                           {caoState.strategy.recommended_action && (
+                             <div className="bg-indigo-50 text-indigo-800 border border-indigo-100 p-3 rounded-xl text-xs">
+                               <span className="font-black block mb-1">Recommended Action</span>
+                               <span className="font-medium">{caoState.strategy.recommended_action}</span>
+                             </div>
+                           )}
+                           {caoState.strategy.post_formats && (
+                             <div className="flex flex-wrap gap-1.5">
+                               {(Array.isArray(caoState.strategy.post_formats) ? caoState.strategy.post_formats : [caoState.strategy.post_formats]).map((f: string, i: number) => (
+                                 <span key={i} className="text-[10px] font-black bg-white border border-gray-200 text-gray-700 px-2 py-0.5 rounded-full">{f}</span>
+                               ))}
+                             </div>
+                           )}
+                           {caoState.strategy.platforms && (
+                             <div className="flex flex-wrap gap-1.5">
+                               {(Array.isArray(caoState.strategy.platforms) ? caoState.strategy.platforms : [caoState.strategy.platforms]).map((p: string, i: number) => (
+                                 <span key={i} className="text-[10px] font-black bg-blue-50 border border-blue-100 text-blue-700 px-2 py-0.5 rounded-full">📱 {p}</span>
+                               ))}
+                             </div>
+                           )}
+                           {caoState.strategy.insight && (
+                             <p className="text-[11px] text-gray-600 font-medium leading-snug bg-gray-50 p-2 rounded-lg border border-gray-100">{caoState.strategy.insight}</p>
+                           )}
+                           {caoState.strategy.auto_launch && (
+                             <div className="flex items-center gap-2 text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-full w-fit">
+                               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                               Auto-Launch Recommended
+                             </div>
+                           )}
+                         </div>
                      </div>
                   ) : (
                      <div className="text-center py-6">

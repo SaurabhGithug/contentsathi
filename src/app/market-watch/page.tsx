@@ -578,7 +578,13 @@ export default function MarketWatchPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {battleCards.map((card) => (
+              {battleCards
+                .filter((card) => {
+                  if (selectedCorridor === "all") return true;
+                  const searchIn = `${card.title} ${card.body} ${card.notes || ""}`.toLowerCase();
+                  return searchIn.includes(selectedCorridor.toLowerCase());
+                })
+                .map((card) => (
                 <div key={card.id} className="bg-white border border-gray-100 rounded-[2rem] p-5 shadow-sm hover:shadow-md transition-all group">
                   <div className="flex items-start justify-between mb-3">
                     <div>

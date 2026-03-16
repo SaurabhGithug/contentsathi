@@ -124,17 +124,15 @@ export default function AnalyticsPage() {
           {/* Output Quality Over Time — Simulated Bar Chart */}
           <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8">
             <h2 className="text-xl font-black text-gray-900 mb-6">Output Quality Score — 6 Weeks</h2>
-            <div className="flex items-end gap-3 h-40">
+            <div className="flex items-end gap-3" style={{ height: "160px" }}>
               {PERFORMANCE_OVER_TIME.map((week) => (
-                <div key={week.week} className="flex-1 flex flex-col items-center gap-2">
+                <div key={week.week} className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
+                  <p className="text-xs font-black text-gray-700 text-center">{week.score}</p>
                   <div
                     className="w-full rounded-t-2xl bg-gradient-to-b from-indigo-500 to-indigo-700 transition-all duration-700"
-                    style={{ height: `${(week.score / 100) * 100}%` }}
+                    style={{ height: `${(week.score / 100) * 120}px` }}
                   />
-                  <div>
-                    <p className="text-xs font-black text-gray-700 text-center">{week.score}</p>
-                    <p className="text-[9px] text-gray-400 text-center font-bold uppercase">{week.week}</p>
-                  </div>
+                  <p className="text-[9px] text-gray-400 text-center font-bold uppercase">{week.week}</p>
                 </div>
               ))}
             </div>

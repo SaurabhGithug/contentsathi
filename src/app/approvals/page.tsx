@@ -48,6 +48,9 @@ export default function ApprovalsPage() {
   const [proactiveSuggestion, setProactiveSuggestion] = useState<string>("");
   const [showAgentComms, setShowAgentComms] = useState<string | number | null>(null);
   const [publishingPost, setPublishingPost] = useState<any>(null);
+  // Saga-style inline editing state
+  const [editingId, setEditingId] = useState<string | number | null>(null);
+  const [editedContent, setEditedContent] = useState<Record<string | number, string>>({});
 
   useEffect(() => {
     fetchItems();
@@ -289,23 +292,56 @@ export default function ApprovalsPage() {
                       </div>
                     )}
 
-                    {/* Full content expand */}
+                    {/* Full content expand + Saga-style inline editor */}
                     {item.fullContent && (
-                      <>
-                        <button
-                          onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
-                          className="flex items-center gap-1.5 text-xs font-bold text-gray-400 hover:text-gray-600 transition-colors"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          {expandedId === item.id ? "Collapse" : "Preview Full Content"}
-                          {expandedId === item.id ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                        </button>
-                        {expandedId === item.id && (
+                      <div className="mt-2 space-y-2">
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                            className="flex items-center gap-1.5 text-xs font-bold text-gray-400 hover:text-gray-600 transition-colors"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            {expandedId === item.id ? "Collapse" : "Preview Full Content"}
+                            {expandedId === item.id ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (editingId === item.id) {
+                                setEditingId(null);
+                              } else {
+                                setEditingId(item.id);
+                                setEditedContent(prev => ({ ...prev, [item.id]: prev[item.id] ?? (item.fullContent || "") }));
+                                setExpandedId(null);
+                              }
+                            }}
+                            className={`flex items-center gap-1.5 text-xs font-bold transition-colors ${
+                              editingId === item.id
+                                ? "text-indigo-600 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-lg"
+                                : "text-emerald-600 hover:text-emerald-700"
+                            }`}
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                            {editingId === item.id ? "✓ Done Editing" : "Edit Content"}
+                          </button>
+                        </div>
+                        {expandedId === item.id && editingId !== item.id && (
                           <div className="bg-white border border-gray-200 rounded-2xl p-5 mt-2 max-h-60 overflow-y-auto pr-3 custom-scrollbar">
-                            <MarkdownContent content={item.fullContent || ""} />
+                            <MarkdownContent content={editedContent[item.id] ?? item.fullContent ?? ""} />
                           </div>
                         )}
-                      </>
+                        {editingId === item.id && (
+                          <div className="relative">
+                            <textarea
+                              value={editedContent[item.id] ?? item.fullContent ?? ""}
+                              onChange={(e) => setEditedContent(prev => ({ ...prev, [item.id]: e.target.value }))}
+                              className="w-full bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none font-medium leading-relaxed"
+                              rows={8}
+                              placeholder="Edit the post content directly..."
+                            />
+                            <span className="absolute top-2 right-3 text-[9px] font-black text-amber-500 uppercase tracking-wider">Editing Mode</span>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -329,7 +365,7 @@ export default function ApprovalsPage() {
                   {/* Action Buttons */}
                   <div className="flex flex-wrap gap-2 mt-2">
                     <button
-                      onClick={() => setPublishingPost({ body: item.fullContent || item.preview, platform: item.platform || "General" })}
+                      onClick={() => setPublishingPost({ body: editedContent[item.id] || item.fullContent || item.preview, platform: item.platform || "General" })}
                       className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs transition-all shadow-sm bg-indigo-600 hover:bg-indigo-700 text-white"
                     >
                       <Send className="w-3.5 h-3.5" />
