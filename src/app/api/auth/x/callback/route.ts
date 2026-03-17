@@ -3,7 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { encryptToken } from "@/lib/encryption";
 import { pendingVerifiers } from "@/lib/twitter-cache";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: Request) {
+  const baseUrl = (process.env.NEXTAUTH_URL || "http://localhost:3000").replace(/\/$/, "");
   const { searchParams } = new URL(req.url);
   const code = searchParams.get("code");
   const state = searchParams.get("state");
@@ -11,25 +14,25 @@ export async function GET(req: Request) {
 
   if (error || !code || !state) {
     const errorMsg = error === "access_denied" ? "oauth_denied" : "token_failed";
-    return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/settings?tab=accounts&error=${errorMsg}`);
+    return NextResponse.redirect(`${baseUrl}/settings?tab=accounts&error=${errorMsg}`);
   }
 
   const codeVerifier = pendingVerifiers.get(state);
   if (!codeVerifier) {
-    return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/settings?tab=accounts&error=session_expired`);
+    return NextResponse.redirect(`${baseUrl}/settings?tab=accounts&error=session_expired`);
   }
   pendingVerifiers.delete(state);
 
   let email = "";
   try {
-    email = Buffer.from(state, "base64url").toString("utf8");
+    email = Buffer.from(decodeURIComponent(state), "base64url").toString("utf8");
   } catch {
-    return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/settings?tab=accounts&error=invalid_state`);
+    return NextResponse.redirect(`${baseUrl}/settings?tab=accounts&error=invalid_state`);
   }
 
   const clientId = process.env.TWITTER_CLIENT_ID!;
   const clientSecret = process.env.TWITTER_CLIENT_SECRET!;
-  const redirectUri = `${process.env.NEXTAUTH_URL}/api/auth/x/callback`;
+  const redirectUri = `${baseUrl}/api/auth/x/callback`;
 
   const tokenRes = await fetch("https://api.twitter.com/2/oauth2/token", {
     method: "POST",
@@ -48,7 +51,7 @@ export async function GET(req: Request) {
 
   if (!tokenData.access_token) {
     console.error("[X OAuth] Token exchange failed:", tokenData);
-    return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/settings?tab=accounts&error=token_failed`);
+    return NextResponse.redirect(`${baseUrl}/settings?tab=accounts&error=token_failed`);
   }
 
   // Get Twitter user info
@@ -59,7 +62,7 @@ export async function GET(req: Request) {
   const twitterUser = userData.data;
 
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/settings?tab=accounts&error=user_not_found`);
+  if (!user) return NextResponse.redirect(`${baseUrl}/settings?tab=accounts&error=user_not_found`);
 
   const tokenExpiry = new Date(Date.now() + (tokenData.expires_in || 7200) * 1000);
 
@@ -87,5 +90,5 @@ export async function GET(req: Request) {
     },
   });
 
-  return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/settings?tab=accounts&success=x`);
+  return NextResponse.redirect(`${baseUrl}/settings?tab=accounts&success=x`);
 }

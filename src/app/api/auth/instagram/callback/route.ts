@@ -7,24 +7,27 @@ import { encryptToken } from "@/lib/encryption";
 // ── Instagram OAuth Callback ─────────────────────────────────────────────────
 // Facebook redirects here with ?code=... after user approves the OAuth dialog.
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: Request) {
+  const baseUrl = (process.env.NEXTAUTH_URL || "http://localhost:3000").replace(/\/$/, "");
   const { searchParams } = new URL(req.url);
   const code = searchParams.get("code");
   const error = searchParams.get("error");
 
   if (error || !code) {
     const errorMsg = error === "access_denied" ? "oauth_denied" : "token_exchange_failed";
-    return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/settings?tab=accounts&error=${errorMsg}`);
+    return NextResponse.redirect(`${baseUrl}/settings?tab=accounts&error=${errorMsg}`);
   }
 
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
-    return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/auth/login`);
+    return NextResponse.redirect(`${baseUrl}/auth/login`);
   }
 
   const appId = process.env.FACEBOOK_APP_ID!;
   const appSecret = process.env.FACEBOOK_APP_SECRET!;
-  const redirectUri = `${process.env.NEXTAUTH_URL}/api/auth/instagram/callback`;
+  const redirectUri = `${baseUrl}/api/auth/instagram/callback`;
 
   // Exchange code for short-lived token
   const tokenRes = await fetch(
@@ -33,7 +36,7 @@ export async function GET(req: Request) {
   const tokenData = await tokenRes.json();
   if (!tokenData.access_token) {
     console.error("[Instagram OAuth] Token exchange failed:", tokenData);
-    return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/settings?tab=accounts&error=token_exchange_failed`);
+    return NextResponse.redirect(`${baseUrl}/settings?tab=accounts&error=token_exchange_failed`);
   }
 
   // Exchange for long-lived token (60 days)
@@ -71,7 +74,7 @@ export async function GET(req: Request) {
   }
 
   const user = await prisma.user.findUnique({ where: { email: session.user.email } });
-  if (!user) return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/settings?tab=accounts&error=user_not_found`);
+  if (!user) return NextResponse.redirect(`${baseUrl}/settings?tab=accounts&error=user_not_found`);
 
   const tokenExpiry = new Date(Date.now() + expiresIn * 1000);
 
@@ -80,7 +83,7 @@ export async function GET(req: Request) {
     encryptedToken = encryptToken(accessToken);
   } catch (err) {
     console.error("[Instagram OAuth] Encryption failed:", err);
-    return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/settings?tab=accounts&error=encryption_failed`);
+    return NextResponse.redirect(`${baseUrl}/settings?tab=accounts&error=encryption_failed`);
   }
 
   await (prisma.socialAccount as any).upsert({
@@ -104,5 +107,5 @@ export async function GET(req: Request) {
     },
   });
 
-  return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/settings?tab=accounts&success=instagram`);
+  return NextResponse.redirect(`${baseUrl}/settings?tab=accounts&success=instagram`);
 }
