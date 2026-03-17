@@ -7,8 +7,9 @@ import { authOptions } from "@/lib/auth";
 import { pendingVerifiers } from "@/lib/twitter-cache";
 
 export async function GET() {
+  const BASE = (process.env.NEXTAUTH_URL || "http://localhost:3000").replace(/\/$/, "");
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) return NextResponse.redirect("/auth/login");
+  if (!session?.user?.email) return NextResponse.redirect(`${BASE}/auth/login`);
 
   const clientId = process.env.TWITTER_CLIENT_ID;
   const redirectUri = encodeURIComponent(`${process.env.NEXTAUTH_URL}/api/auth/x/callback`);

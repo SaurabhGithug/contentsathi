@@ -3,8 +3,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
 export async function GET() {
+  const BASE = (process.env.NEXTAUTH_URL || "http://localhost:3000").replace(/\/$/, "");
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) return NextResponse.redirect("/auth/login");
+  if (!session?.user?.email) return NextResponse.redirect(`${BASE}/auth/login`);
 
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const redirectUri = encodeURIComponent(`${process.env.NEXTAUTH_URL}/api/auth/youtube/callback`);

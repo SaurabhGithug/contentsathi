@@ -12,9 +12,10 @@ import { redirect } from "next/navigation";
 //   NEXTAUTH_URL=http://localhost:3000
 
 export async function GET() {
+  const BASE = (process.env.NEXTAUTH_URL || "http://localhost:3000").replace(/\/$/, "");
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
-    return NextResponse.redirect("/auth/login");
+    return NextResponse.redirect(`${BASE}/auth/login`);
   }
 
   const appId = process.env.FACEBOOK_APP_ID;
