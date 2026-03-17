@@ -18,7 +18,8 @@ export async function GET() {
 
     const redirectUri = encodeURIComponent(`${BASE}/api/auth/linkedin/callback`);
     const scope = encodeURIComponent("openid profile email w_member_social");
-    const state = Buffer.from(session.user.email).toString("base64");
+    // VERY IMPORTANT: state MUST be URL safe or encoded before putting in original URL!
+    const state = encodeURIComponent(Buffer.from(session.user.email).toString("base64"));
 
     const linkedinOAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=${scope}`;
     return NextResponse.redirect(linkedinOAuthUrl);

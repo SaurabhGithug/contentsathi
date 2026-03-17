@@ -134,8 +134,9 @@ function SettingsContent() {
         invalid_state: "Security verification failed. Please try again.",
         session_expired: "Session expired. Please try connecting again."
       };
-      const msg = errorMessages[error] || "An error occurred during connection.";
-      toast.error(msg, { duration: 5000 });
+      const rawErrorMsg = error.startsWith("fatal_") || error.startsWith("oauth_error_") || error.includes("invalid") ? `Raw Error: ${error}` : "";
+      const msg = errorMessages[error] || `An error occurred: ${rawErrorMsg || error}`;
+      toast.error(msg, { duration: 8000 });
       setAuthFlashMessage({ type: "error", text: msg });
       router.replace("/settings?tab=accounts", { scroll: false });
     }
