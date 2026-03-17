@@ -8,10 +8,12 @@ import Link from "next/link";
 // ── Type definitions ──────────────────────────────────────────────────────────
 interface FormData {
   businessName: string;
-  city: string;
+  city: string; // City & Micro-market
   customers: string;
   businessType: string;
   businessSubType: string;
+  productType?: string; // e.g. Plots, Flats, Villas, Commercial
+  projectStage?: string; // e.g. Pre-launch, Ongoing, Ready to move
   brandDescription: string;
   brandVoice: string;
   languages: string[];
@@ -73,7 +75,24 @@ export default function OnboardingPage() {
   const prevStep = () => setStep((s) => Math.max(1, s - 1));
 
   const handleComplete = async () => {
-    // TODO: save to API /api/content-brain
+    try {
+      await fetch("/api/content-brain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          brandName: formData.businessName,
+          brandDescription: formData.brandDescription || `${formData.city} - ${formData.productType} - ${formData.projectStage}`,
+          industry: formData.businessType,
+          audienceDescription: formData.customers,
+          primaryLanguage: formData.languages[0] || "English",
+          secondaryLanguage: formData.languages[1] || "",
+          tone: formData.brandVoice,
+        }),
+      });
+      await fetch("/api/user/complete-onboarding", { method: "POST" }).catch(() => {});
+    } catch (e) {
+      console.error(e);
+    }
     router.push("/dashboard");
   };
 
@@ -178,12 +197,12 @@ export default function OnboardingPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">City / Location</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">City & Micro-market</label>
                 <input
                   type="text"
                   value={formData.city}
                   onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                  placeholder="e.g. Nagpur, Maharashtra"
+                  placeholder="e.g. Nagpur & Wardha Road corridor"
                   className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none transition-all"
                 />
               </div>
@@ -228,23 +247,68 @@ export default function OnboardingPage() {
               </div>
 
               {formData.businessType === "real-estate" && (
-                <div>
-                  <p className="text-sm font-semibold text-gray-700 mb-3">What type of real estate?</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {RE_SUB_TYPES.map((st) => (
-                      <button
-                        key={st.id}
-                        onClick={() => setSubType(st.id)}
-                        className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-sm font-semibold ${
-                          formData.businessSubType === st.id
-                            ? "border-violet-600 bg-violet-50 text-violet-800"
-                            : "border-gray-100 hover:border-violet-200 text-gray-600 hover:bg-gray-50"
-                        }`}
-                      >
-                        <span className="text-xl">{st.emoji}</span>
-                        {st.label}
-                      </button>
-                    ))}
+                <div className="space-y-5 border-t border-gray-100 pt-5">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-700 mb-3">What type of real estate?</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      {RE_SUB_TYPES.map((st) => (
+                        <button
+                          key={st.id}
+                          onClick={() => setSubType(st.id)}
+                          className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-sm font-semibold ${
+                            formData.businessSubType === st.id
+                              ? "border-violet-600 bg-violet-50 text-violet-800"
+                              : "border-gray-100 hover:border-violet-200 text-gray-600 hover:bg-gray-50"
+                          }`}
+                        >
+                          <span className="text-xl">{st.emoji}</span>
+                          {st.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-3">Product Type</label>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      {["Plots", "Flats/Apartments", "Villas", "Commercial"].map((pt) => (
+                        <button
+                          key={pt}
+                          onClick={() => setFormData({ ...formData, productType: pt })}
+                          className={`p-3 rounded-xl border-2 transition-all text-xs font-semibold ${
+                            formData.productType === pt
+                              ? "border-emerald-600 bg-emerald-50 text-emerald-800"
+                              : "border-gray-100 hover:border-emerald-200 text-gray-600 hover:bg-gray-50"
+                          }`}
+                        >
+                          {pt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-3">Marketing Stage (Project Phase)</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { id: "pre-launch", label: "Pre-Launch", desc: "Build Hype" },
+                        { id: "ongoing", label: "Ongoing", desc: "Show Progress" },
+                        { id: "ready", label: "Ready to Move", desc: "Drive Urgency" }
+                      ].map((stage) => (
+                        <button
+                          key={stage.id}
+                          onClick={() => setFormData({ ...formData, projectStage: stage.id })}
+                          className={`p-3 flex flex-col items-center justify-center rounded-xl border-2 transition-all text-xs font-semibold ${
+                            formData.projectStage === stage.id
+                              ? "border-indigo-600 bg-indigo-50 text-indigo-800"
+                              : "border-gray-100 hover:border-indigo-200 text-gray-600 hover:bg-gray-50"
+                          }`}
+                        >
+                          <span className="block mb-1">{stage.label}</span>
+                          <span className="text-[10px] font-normal opacity-70">{stage.desc}</span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}

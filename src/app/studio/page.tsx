@@ -63,13 +63,13 @@ const BUYING_PATTERNS = [
 function stripMarkdown(text: string): string {
   if (!text) return "";
   return text
-    .replace(/\*\*(.*?)\*\*/g, "$1")   // **bold**
-    .replace(/\*(.*?)\*/g, "$1")       // *italic*
-    .replace(/__(.*?)__/g, "$1")       // __bold__
-    .replace(/_(.*?)_/g, "$1")         // _italic_
-    .replace(/#+\s?/g, "")             // # headings
+    .replace(/^#+\s+/gm, "")               // # Headings
+    .replace(/\*\*(.*?)\*\*/g, "$1")       // **bold**
+    .replace(/\*(.*?)\*/g, "$1")           // *italic*
+    .replace(/__(.*?)__/g, "$1")           // __bold__
+    .replace(/_(.*?)_/g, "$1")             // _italic_
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // [link](url)
-    .replace(/`([^`]+)`/g, "$1")       // `code`
+    .replace(/`([^`]+)`/g, "$1")           // `code`
     .trim();
 }
 
@@ -114,14 +114,7 @@ const BRIEF_TEMPLATES = [
 ];
 
 export default function AgenticOrchestrator() {
-  // ── Chat / Memory State ────────────────────────────────────────────
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: "assistant",
-      content:
-        "Namaste! 🙏 Main hoon **ContentSathi AI** — aapka autonomous AI Content Strategist. Mujhe batao aap kya achieve karna chahte ho — main deep research karta hun, content likhta hun, aur sab channels ke liye ready-to-publish posts produce karta hun.\n\nBas **neeche apna campaign goal type karo**, ya ek template choose karo.",
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [publishingPost, setPublishingPost] = useState<any>(null);
@@ -141,14 +134,37 @@ export default function AgenticOrchestrator() {
   const [proactiveSuggestion, setProactiveSuggestion] = useState("");
   const [campaignLog, setCampaignLog] = useState<any[]>([]);
   const [selectedPattern, setSelectedPattern] = useState("roi");
+  
+  // Guided inputs
+  const [selectedPlatform, setSelectedPlatform] = useState("Instagram");
+  const [selectedLanguage, setSelectedLanguage] = useState("Hinglish");
+  const [selectedTone, setSelectedTone] = useState("Professional");
+  const [marketingStage, setMarketingStage] = useState("Awareness");
+
   const [trendingBriefing, setTrendingBriefing] = useState<any[]>([]);
   const [isLoadingTrends, setIsLoadingTrends] = useState(false);
+
+  const [brandInfo, setBrandInfo] = useState({ name: "", niche: "" });
 
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
   // ── Poll tasks & memory ─────────────────────────────────────────────
   useEffect(() => {
     let pollingInterval: NodeJS.Timeout;
+
+    // Load dynamic intro context
+    fetch("/api/content-brain").then(r => r.json()).then(data => {
+      const bn = data?.brandName || "Your Brand";
+      const niche = data?.niche || "Your Industry";
+      setBrandInfo({ name: bn, niche: niche });
+      
+      setMessages([{
+        role: "assistant",
+        content: `Namaste! 🙏 I am **ContentSathi AI**, your autonomous Copilot for **${bn}**. I specialize in ${niche}.\n\nTell me what you want to achieve today — I will handle the research, writing, and platform distribution. Let's grow ${bn} together! 🚀`
+      }]);
+    }).catch(() => {
+      setMessages([{ role: "assistant", content: "Namaste! 🙏 I am **ContentSathi AI**. Ready to produce your next viral campaign!" }]);
+    });
 
     const fetchData = async () => {
       try {
@@ -274,13 +290,16 @@ export default function AgenticOrchestrator() {
       toast.error("Write your campaign goal first.");
       return;
     }
+    // Build structured goal
+    const structuredGoal = `Marketing Stage: ${marketingStage}\nPlatform: ${selectedPlatform}\nLanguage: ${selectedLanguage}\Tone: ${selectedTone}\n\nTask: ${newRunGoal}`;
+
     setIsStartingRun(true);
     try {
       const res = await fetch("/api/studio/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          goal: newRunGoal,
+          goal: structuredGoal,
           pattern: selectedPattern 
         }),
       });
@@ -415,18 +434,60 @@ export default function AgenticOrchestrator() {
                   </div>
                   <div>
                     <h3 className="font-black text-gray-900 text-lg leading-tight">Brief Your Agent Team</h3>
-                    <p className="text-xs text-gray-400 font-medium">Tell the team your goal — they&apos;ll handle everything from research to publishing.</p>
+                    <p className="text-xs text-gray-400 font-medium">Define your strategy, then describe your specific request.</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Platform</label>
+                    <select value={selectedPlatform} onChange={e => setSelectedPlatform(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-700 outline-none focus:ring-2 focus:ring-indigo-400">
+                      <option value="Instagram">Instagram</option>
+                      <option value="LinkedIn">LinkedIn</option>
+                      <option value="Facebook">Facebook</option>
+                      <option value="Twitter">X (Twitter)</option>
+                      <option value="WhatsApp">WhatsApp</option>
+                      <option value="YouTube Shorts">YouTube Shorts</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Language</label>
+                    <select value={selectedLanguage} onChange={e => setSelectedLanguage(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-700 outline-none focus:ring-2 focus:ring-indigo-400">
+                      <option value="English">English</option>
+                      <option value="Hinglish">Hinglish</option>
+                      <option value="Hindi">Hindi</option>
+                      <option value="Marathi">Marathi</option>
+                      <option value="Bilingual">Bilingual</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Tone</label>
+                    <select value={selectedTone} onChange={e => setSelectedTone(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-700 outline-none focus:ring-2 focus:ring-indigo-400">
+                      <option value="Professional & Authoritative">Professional & Authoritative</option>
+                      <option value="Aggressive & Urgency">Aggressive & Urgency</option>
+                      <option value="Casual & Friendly">Casual & Friendly</option>
+                      <option value="Educational & Helpful">Educational & Helpful</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Marketing Stage</label>
+                    <select value={marketingStage} onChange={e => setMarketingStage(e.target.value)} className="w-full bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 text-xs font-bold text-emerald-800 outline-none focus:ring-2 focus:ring-emerald-400">
+                      <option value="Awareness">Awareness (Top Funnel)</option>
+                      <option value="Consideration">Consideration (Mid Funnel)</option>
+                      <option value="Conversion">Conversion (Bottom Funnel)</option>
+                      <option value="Retention">Retention</option>
+                    </select>
                   </div>
                 </div>
 
                 <textarea
                   value={newRunGoal}
                   onChange={(e) => setNewRunGoal(e.target.value)}
-                  placeholder="E.g. Create 5 Instagram posts for Diwali targeting first-time homebuyers in Nagpur. Focus on the MIHAN corridor. Include Hinglish and strong CTAs."
-                  className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 font-medium resize-none h-32 transition-all"
+                  placeholder="Describe your campaign goal. (E.g. Create a holiday offer highlighting the new infrastructure nearby...)"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 font-medium resize-none h-28 transition-all"
                 />
 
-                <div className="mt-6">
+                <div className="mt-5">
                   <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">
                     Human Buying Pattern (Psychological Trigger)
                   </label>
@@ -492,13 +553,16 @@ export default function AgenticOrchestrator() {
                       <span className="text-lg shrink-0 mt-0.5 group-hover:scale-110 transition-transform">
                         {tpl.icon}
                       </span>
-                      <div>
+                      <div className="flex-1">
                         <p className="text-xs font-black text-gray-800">{tpl.label}</p>
-                        <span className="text-[9px] font-bold text-orange-600 bg-orange-50 border border-orange-100 px-1.5 py-0.5 rounded-full">
+                        <span className="text-[9px] font-bold text-orange-600 bg-orange-50 border border-orange-100 px-1.5 py-0.5 rounded-full inline-block mt-1">
                           {tpl.tag}
                         </span>
+                        <p className="text-[9px] text-gray-500 mt-1 line-clamp-2 leading-tight">
+                          {tpl.goal}
+                        </p>
                       </div>
-                      <ArrowRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-orange-500 ml-auto mt-0.5 transition-colors" />
+                      <ArrowRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-orange-500 ml-auto mt-0.5 transition-colors shrink-0" />
                     </button>
                   ))}
                 </div>
@@ -799,12 +863,15 @@ export default function AgenticOrchestrator() {
               className="w-full flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-violet-50 to-indigo-50"
               onClick={() => setShowMemoryPanel((p) => !p)}
             >
-              <div className="flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-violet-600" />
-                <h3 className="font-black text-gray-900 text-sm">Brand Memory</h3>
-                <span className="px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 text-[9px] font-black uppercase tracking-wider">
+              <div className="flex items-center gap-2 flex-1 overflow-hidden">
+                <BookOpen className="w-4 h-4 text-violet-600 shrink-0" />
+                <h3 className="font-black text-gray-900 text-sm shrink-0">Brand Memory</h3>
+                <span className="px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 text-[9px] font-black uppercase tracking-wider shrink-0">
                   soul.md
                 </span>
+                <p className="text-[10px] text-gray-400 truncate opacity-70 ml-1">
+                  {coreMemory ? stripMarkdown(coreMemory) : "No memory saved yet..."}
+                </p>
               </div>
               <div className="flex items-center gap-2">
                 {!isEditingMemory ? (
@@ -966,18 +1033,17 @@ export default function AgenticOrchestrator() {
                   horizon: "12 Weeks",
                   color: "bg-amber-500",
                   items: [
-                    "4–6 active Nagpur channels ranked",
-                    "Nagpur content template library",
-                    "Baseline engagement metrics / corridor",
-                    "QA/QC process enforced",
+                    "4–6 active channels ranked & optimized",
+                    "Establish daily automated posting rhythm",
+                    "Baseline engagement metrics captured",
                   ],
                 },
                 {
                   horizon: "6 Months",
                   color: "bg-blue-500",
                   items: [
-                    "Fully autonomous content cycle",
-                    "Live market signal dashboard",
+                    "Golden Loop mirroring highest-performing hooks",
+                    "Live market signal integration",
                     "<5% revision rate across all agents",
                   ],
                 },
@@ -985,9 +1051,9 @@ export default function AgenticOrchestrator() {
                   horizon: "12 Months",
                   color: "bg-violet-500",
                   items: [
-                    "Multi-micro-market coverage (all Nagpur corridors)",
-                    "Optimized CAC per corridor",
-                    "Full content archive by season",
+                    "Full cross-channel omni-presence",
+                    "Optimized conversion tracking via CRM",
+                    "Hyper-localized dialect engines activated",
                   ],
                 },
               ].map((goal) => (
