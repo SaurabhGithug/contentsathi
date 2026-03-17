@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { decryptToken } from "@/lib/encryption";
 
 export async function POST(req: Request) {
     let calendarItemId: string | undefined;
@@ -35,7 +36,12 @@ export async function POST(req: Request) {
           return NextResponse.json({ error: "Instagram account not connected in database." }, { status: 400 });
         }
 
-        accessToken = account.accessToken;
+        // CRITICAL: token is AES-encrypted at rest — must decrypt before use
+        try {
+          accessToken = decryptToken(account.accessToken);
+        } catch {
+          return NextResponse.json({ error: "Failed to decrypt Instagram credentials. Please reconnect your account." }, { status: 500 });
+        }
         providerAccountId = account.accountId;
       }
 

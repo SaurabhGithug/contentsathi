@@ -51,9 +51,33 @@ export async function GET(request: Request) {
       where,
       orderBy: { createdAt: "desc" },
       take: 100,
+      include: {
+        publishLogs: {
+          select: { id: true, status: true, platformPostUrl: true },
+        },
+        calendarItems: {
+          where: { status: "published" },
+          select: { id: true, publishedAt: true, platform: true },
+        },
+      },
     });
 
-    return NextResponse.json({ assets });
+    // Sync publishCount so Asset Vault reflects real published post counts
+    const enriched = assets.map((asset: any) => {
+      const fromLogs = asset.publishLogs?.filter((l: any) => l.status === "success").length ?? 0;
+      const fromCalendar = asset.calendarItems?.length ?? 0;
+      const finalCount = Math.max(fromLogs + fromCalendar, asset.publishCount ?? 0);
+      return {
+        ...asset,
+        publishCount: finalCount,
+        publishedUrls: asset.publishLogs
+          ?.filter((l: any) => l.platformPostUrl)
+          .map((l: any) => l.platformPostUrl) ?? [],
+      };
+    });
+
+    return NextResponse.json({ assets: enriched });
+
   } catch (error: any) {
     console.error("Fetch assets error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

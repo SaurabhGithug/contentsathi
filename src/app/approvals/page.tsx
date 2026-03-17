@@ -11,6 +11,21 @@ import { format } from "date-fns";
 import toast from "react-hot-toast";
 import PublishModal from "@/components/PublishModal";
 
+// Strip markdown formatting for plain-text previews
+function stripMarkdown(text: string): string {
+  if (!text) return "";
+  return text
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/\*(.*?)\*/g, "$1")
+    .replace(/__(.*?)__/g, "$1")
+    .replace(/_(.*?)_/g, "$1")
+    .replace(/#+\s?/g, "")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/^[-*>]\s/gm, "")
+    .trim();
+}
+
 type ApprovalItem = {
   id: string | number;
   type: string;
@@ -72,6 +87,8 @@ export default function ApprovalsPage() {
 
   const fetchItems = async () => {
     setLoading(true);
+    // Safety timeout — never show a perpetual spinner
+    const safetyTimer = setTimeout(() => setLoading(false), 8000);
     // Fetch real tasks from DB that are completed and pending human review
     try {
       const res = await fetch("/api/studio/tasks");
@@ -84,7 +101,8 @@ export default function ApprovalsPage() {
           (task.generatedContent || []).map((c: any) => ({
             id: `${task.id}_${c.id}`,
             type: c.platform + " Content",
-            preview: (c.text || "").substring(0, 140) + "...",
+            // Strip markdown so ** Campaign Title: ** shows as plain text
+            preview: stripMarkdown((c.text || "").substring(0, 160)) + (c.text?.length > 160 ? "..." : ""),
             fullContent: c.text,
             agent: c.agent || "AI Team",
             status: c.status || "Needs Review",
@@ -98,49 +116,13 @@ export default function ApprovalsPage() {
         if (mapped.length > 0) {
           setItems(mapped);
         } else {
-          // Populate with demo items reflecting real agent work
-          setItems([
-            {
-              id: 1,
-              type: "LinkedIn Article",
-              preview: "Why Saraswati Nagri is Nagpur's fastest-appreciating investment zone in 2026 — and why NRIs are taking notice...",
-              fullContent: "Why Saraswati Nagri is Nagpur's fastest-appreciating investment zone in 2026\n\nIf you're looking for a plot that will give you 25–30% appreciation over the next 3 years, Saraswati Nagri should be at the top of your list.\n\nHere's why investors are quietly buying here:\n→ Ring Road connectivity is 90% complete — values jump when it opens\n→ MIHAN SEZ is 8 km away — job growth = housing demand\n→ Plots from ₹15L – ₹28L, still 40% below comparable western Nagpur zones\n→ Full NA conversion, 7/12 clear title\n→ Vastu-compliant layouts with north-facing options\n\nI've seen buyers regret waiting. I've never seen a single buyer regret buying here early.\n\nBook a site visit this weekend.\n📞 +91-XXXXXXXXXX",
-              agent: "Copywriter + SEO Agent",
-              status: "Needs Review",
-              date: new Date(),
-              qcScore: 9,
-              platform: "LinkedIn",
-              agentMessages: [
-                { from: "Copywriter", to: "SEO Specialist", question: "Priority: 'investment plots Nagpur' vs 'building dream homes' for this piece?" },
-                { from: "SEO Specialist", to: "Copywriter", question: "Use 'investment plots Nagpur' as primary — 3x higher search volume. 'building dream homes' is secondary." },
-              ]
-            },
-            {
-              id: 2,
-              type: "Instagram Carousel",
-              preview: "5 reasons your friends who bought in Saraswati Nagri 2 years ago are not selling 🏆 (Slide 1 of 5)",
-              agent: "Visual Designer + Copywriter",
-              status: "Needs Review",
-              date: new Date(),
-              qcScore: 7,
-              platform: "Instagram",
-            },
-            {
-              id: 3,
-              type: "WhatsApp Broadcast",
-              preview: "Hello {Name}! Apne plot ki value 2 saal me 30% badhegi — proof se batate hain. Saraswati Nagri site visit Sunday ke liye...",
-              agent: "Distribution Lead",
-              status: "Needs Review",
-              date: new Date(),
-              qcScore: 8,
-              platform: "WhatsApp",
-            },
-          ]);
+          setItems([]);
         }
       }
     } catch {
       setItems([]);
     } finally {
+      clearTimeout(safetyTimer);
       setLoading(false);
     }
   };

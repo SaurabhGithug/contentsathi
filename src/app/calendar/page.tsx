@@ -75,6 +75,21 @@ export default function CalendarPage() {
     { id: 's2', title: 'Weekend Property Tour', platform: 'Instagram', scheduledAt: addDays(startOfMonths(new Date()), 12).toISOString(), isSuggested: true, festivalTag: 'Site Visit' },
     { id: 's3', title: 'Investment Tips', platform: 'YouTube Shorts', scheduledAt: addDays(startOfMonths(new Date()), 14).toISOString(), isSuggested: true, festivalTag: 'Educational' },
   ]);
+  const [autoScheduleRecs, setAutoScheduleRecs] = useState<any[]>([]);
+  const [showAutoSchedule, setShowAutoSchedule] = useState(false);
+  const [autoScheduleLoading, setAutoScheduleLoading] = useState(false);
+
+  const fetchAutoSchedule = async () => {
+    setAutoScheduleLoading(true);
+    setShowAutoSchedule(true);
+    try {
+      const res = await fetch("/api/auto-schedule");
+      if (res.ok) {
+        const data = await res.json();
+        setAutoScheduleRecs(data.recommendations ?? []);
+      }
+    } catch {} finally { setAutoScheduleLoading(false); }
+  };
 
   function startOfMonths(date: Date) {
     return startOfMonth(date);
@@ -147,6 +162,13 @@ export default function CalendarPage() {
           <button className="p-3 bg-white border border-gray-200 text-gray-900 rounded-2xl hover:bg-gray-50 transition-all shadow-sm">
             <Filter className="w-5 h-5" />
           </button>
+          <button
+            onClick={fetchAutoSchedule}
+            className="flex items-center gap-2 px-5 py-3 bg-violet-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-violet-100 hover:bg-violet-700 transition-all"
+          >
+            <Sparkles className="w-4 h-4" />
+            Auto-Schedule AI
+          </button>
           <button 
             onClick={() => setShowScheduleModal(true)}
             className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-black shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all"
@@ -156,6 +178,57 @@ export default function CalendarPage() {
           </button>
         </div>
       </div>
+
+      {/* ── Auto-Schedule Intelligence Panel ────────────────────────────── */}
+      {showAutoSchedule && (
+        <div className="bg-gradient-to-br from-violet-50 to-indigo-50 border border-violet-200 rounded-3xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-violet-100 flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-violet-600" />
+              </div>
+              <div>
+                <p className="font-black text-violet-900">AI-Recommended Posting Slots</p>
+                <p className="text-xs text-violet-600 font-medium">Based on audience behaviour patterns for Nagpur real estate</p>
+              </div>
+            </div>
+            <button onClick={() => setShowAutoSchedule(false)} className="p-2 text-violet-400 hover:text-violet-700 rounded-xl hover:bg-violet-100 transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          {autoScheduleLoading ? (
+            <div className="flex items-center gap-3 py-4 justify-center">
+              <div className="w-5 h-5 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
+              <span className="text-sm font-bold text-violet-600">Analyzing your calendar for empty slots...</span>
+            </div>
+          ) : autoScheduleRecs.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {autoScheduleRecs.slice(0, 6).map((rec: any, i: number) => (
+                <div key={i} className="bg-white rounded-2xl border border-violet-100 p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-violet-50 flex flex-col items-center justify-center shrink-0">
+                    <span className="text-[8px] font-bold text-violet-500 uppercase">{new Date(rec.scheduledAt).toLocaleDateString("en", { weekday: "short" })}</span>
+                    <span className="text-sm font-black text-violet-900">{new Date(rec.scheduledAt).getDate()}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-black uppercase text-gray-400">{rec.platform} · {new Date(rec.scheduledAt).toLocaleTimeString("en", { hour: "2-digit", minute: "2-digit" })}</p>
+                    <p className="text-xs font-bold text-gray-700 truncate">{rec.suggestion?.angle ?? rec.reason}</p>
+                  </div>
+                  <a href={`/studio?goal=${encodeURIComponent(rec.suggestion?.angle ?? "Create a post for this slot")}`}
+                    className="shrink-0 px-3 py-1.5 bg-violet-600 hover:bg-violet-700 text-white font-black text-[10px] rounded-xl transition-colors">
+                    Fill
+                  </a>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-6">
+              <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
+              <p className="font-black text-gray-700">Your calendar is well-optimised!</p>
+              <p className="text-sm text-gray-400">No critical empty slots found in the next 7 days.</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {showScheduleModal && (
         <ScheduleModal 

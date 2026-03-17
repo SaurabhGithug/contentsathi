@@ -23,6 +23,9 @@ import {
   Shield,
   FileText,
   Calculator,
+  BrainCircuit,
+  Star,
+  SearchCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -44,6 +47,7 @@ const navGroups = [
     items: [
       { name: "Chief AI Officer",       href: "/cao",                icon: Shield },
       { name: "Research · Hunter Mode", href: "/market-watch",       icon: TrendingUp },
+      { name: "Buyer Intelligence",     href: "/intelligence",       icon: Star, badge: "NEW" },
       { name: "2026 Industry Report",   href: "/report",             icon: FileText },  
     ]
   },
@@ -54,6 +58,7 @@ const navGroups = [
       { name: "Agent Team",             href: "/agents",             icon: Users },
       { name: "Approvals & QC",         href: "/approvals",          icon: BookOpen },
       { name: "Analytics",              href: "/analytics",          icon: Activity },
+      { name: "Account Audit",          href: "/account-audit",      icon: SearchCheck },
     ]
   },
   {
@@ -65,7 +70,6 @@ const navGroups = [
   }
 ];
 
-import { BrainCircuit } from "lucide-react";
 
 const PLATFORM_ICONS: Record<string, any> = {
   instagram: { icon: Instagram, label: "Instagram" },
