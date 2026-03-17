@@ -6,7 +6,7 @@ import { callSarvamChat } from "@/lib/sarvam";
 import { searchWeb } from "@/lib/tavily";
 import { marketHunter } from "@/lib/social-scraper";
 import { isOperationalQuery, runOperationalQuery } from "@/lib/cao-ops";
-import { isValuationIntent, parsePlotFromMessage } from "@/app/api/studio/valuate-plot/route";
+import { isValuationIntent, parsePlotFromMessage } from "@/lib/valuation";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;

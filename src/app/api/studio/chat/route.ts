@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { callSarvamChat } from "@/lib/sarvam";
-import { isValuationIntent, parsePlotFromMessage } from "@/app/api/studio/valuate-plot/route";
+import { isValuationIntent, parsePlotFromMessage } from "@/lib/valuation";
 import { isOperationalQuery, runOperationalQuery } from "@/lib/cao-ops";
 
 export const runtime = "nodejs";

@@ -268,17 +268,23 @@ export default function AgenticOrchestrator() {
   };
 
   // ── Launch Campaign ────────────────────────────────────────────────
-  const handleApprove = async (taskId: string, platform: string, content: string) => {
+  const handleApprove = async (taskId: string, contentId: string, platform: string, content: string) => {
     try {
       const res = await fetch("/api/studio/tasks/approve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ taskId, platform, content })
+        body: JSON.stringify({ 
+          taskId, 
+          contentId, 
+          editedText: content,
+          action: "approve" 
+        })
       });
       if (res.ok) {
-        toast.success("Scheduled! Checked your Marketing Calendar. 📅");
+        toast.success(`Success! ${platform} post saved to Asset Vault & Calendar. 📅`);
       } else {
-        toast.error("Failed to approve content.");
+        const err = await res.json();
+        toast.error(err.error || "Failed to approve content.");
       }
     } catch {
       toast.error("Error approving content.");
@@ -614,14 +620,37 @@ export default function AgenticOrchestrator() {
                           )}
                         </div>
                         <div>
-                          <h4 className="font-black text-gray-900 text-sm leading-tight">
-                            {stripMarkdown(task.goal).length > 80 ? stripMarkdown(task.goal).substring(0, 80) + "…" : stripMarkdown(task.goal)}
-                          </h4>
-                          <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">
-                            {task.source === "whatsapp" ? "📱 WhatsApp" : "💻 Web"} ·{" "}
-                            {new Date(task.createdAt).toLocaleTimeString()}
-                          </p>
-                        </div>
+                           <div className="flex flex-wrap gap-1 mb-1">
+                             {task.goal.includes("Platform:") && (
+                               <span className="text-[8px] font-black bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-md uppercase">
+                                 {task.goal.split("Platform:")[1].split("\n")[0].trim()}
+                               </span>
+                             )}
+                             {task.goal.includes("Stage:") && (
+                               <span className="text-[8px] font-black bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-md uppercase">
+                                 {task.goal.split("Stage:")[1].split("\n")[0].trim()}
+                               </span>
+                             )}
+                           </div>
+                           <h4 className="font-black text-gray-900 text-sm leading-tight group relative cursor-help">
+                             {(() => {
+                               const cleaned = task.goal.includes("Task:") 
+                                 ? task.goal.split("Task:")[1].trim()
+                                 : task.goal.split(/Tone:\s*[^\s]+\s*/i).pop()?.trim() || task.goal;
+                               return stripMarkdown(cleaned).length > 80 
+                                 ? stripMarkdown(cleaned).substring(0, 80) + "…" 
+                                 : stripMarkdown(cleaned);
+                             })()}
+                             <div className="absolute z-50 invisible group-hover:visible bg-slate-900 text-white p-3 rounded-xl w-64 -left-2 top-full mt-2 text-[10px] font-medium shadow-2xl border border-white/10 leading-relaxed">
+                               <p className="font-black text-indigo-400 mb-2 border-b border-white/10 pb-1">Full Brief Input:</p>
+                               {task.goal}
+                             </div>
+                           </h4>
+                           <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">
+                             {task.source === "whatsapp" ? "📱 WhatsApp" : "💻 Web"} ·{" "}
+                             {new Date(task.createdAt).toLocaleTimeString()}
+                           </p>
+                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
                         {task.status === "processing" && (
@@ -729,35 +758,41 @@ export default function AgenticOrchestrator() {
                           </div>
                         )}
                         {task.generatedContent && (
-                          <div>
+                          <div className="space-y-4">
                             <h5 className="flex items-center gap-1.5 text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-2 border-b pb-1">
                               <Target className="w-3.5 h-3.5" /> Generated Content
                             </h5>
-                            <div className="flex flex-col gap-3">
-                              {task.generatedContent.map((c: any) => (
-                                <div key={c.id} className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl">
-                                  <div className="flex items-center justify-between mb-3">
-                                    <span className="text-[9px] font-black uppercase text-emerald-700 bg-white px-2 py-0.5 rounded shadow-sm border border-emerald-100">
-                                      {c.platform}
+                            <div className="flex flex-col gap-4">
+                              {Array.isArray(task.generatedContent) ? task.generatedContent.map((c: any) => (
+                                <div key={c.id} className="bg-emerald-50/30 border border-emerald-100 p-4 rounded-2xl shadow-sm">
+                                  <div className="flex items-center justify-between mb-3 border-b border-emerald-100/50 pb-2">
+                                    <span className="text-[9px] font-black uppercase text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-200">
+                                      {c.platform || "GENERAL"}
                                     </span>
                                     <div className="flex items-center gap-2">
                                       <button 
-                                        onClick={() => handleApprove(task.id, c.platform, c.text)}
-                                        className="text-[10px] font-black uppercase bg-white border border-emerald-200 text-emerald-700 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition-colors flex items-center gap-1 shadow-sm"
+                                        onClick={() => handleApprove(task.id, c.id, c.platform, c.text)}
+                                        className="text-[9px] font-black uppercase bg-white border border-emerald-200 text-emerald-700 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition-colors flex items-center gap-1.5 shadow-sm"
                                       >
-                                        <Clock className="w-3 h-3" /> Approve & Schedule
+                                        <Clock className="w-3.5 h-3.5" /> Approve
                                       </button>
                                       <button 
                                         onClick={() => setPublishingPost({ body: c.text, platform: c.platform })}
-                                        className="text-[10px] font-black uppercase bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-1 shadow-sm"
+                                        className="text-[9px] font-black uppercase bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-1.5 shadow-sm"
                                       >
-                                        <Send className="w-3 h-3" /> Instant Publish
+                                        <Send className="w-3.5 h-3.5" /> Publish
                                       </button>
                                     </div>
                                   </div>
-                                  <MarkdownContent content={c.text || ""} compact />
+                                  <div className="max-h-64 overflow-y-auto custom-scrollbar">
+                                    <MarkdownContent content={c.text || ""} compact />
+                                  </div>
                                 </div>
-                              ))}
+                              )) : (
+                                <div className="p-4 bg-red-50 text-red-600 rounded-xl text-xs italic">
+                                  Content structure is invalid.
+                                </div>
+                              )}
                             </div>
                           </div>
                         )}

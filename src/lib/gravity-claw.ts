@@ -178,11 +178,15 @@ export async function runGravityClaw(taskId: string) {
       brain?.tone ? `Tone: ${brain.tone}` : "",
       brain?.contactPhone ? `Lead Gen Number: ${brain.contactPhone}` : "",
       brain?.location ? `Location: ${brain.location}` : "",
+      (brain as any)?.marketingStage ? `Project Stage: ${(brain as any).marketingStage}` : "",
+      (brain as any)?.marketingGap ? `Current Pain Point: ${(brain as any).marketingGap}` : "",
     ].filter(Boolean).join("\n");
 
     const caoStrategy = (brain as any)?.caoStrategy ? JSON.stringify((brain as any).caoStrategy) : "No active CAO strategy.";
 
-    const systemContext = `${brandContext}
+    const inputContext = (task as any)?.inputContext ? `INPUT CONTEXT DATA:\n${JSON.stringify((task as any).inputContext)}\n` : "";
+
+    const systemContext = `${inputContext}${brandContext}
 
 NAGPUR GROUNDING DATA (STRICT):
 - Key Corridors: Wardha Road, MIHAN, Amravati Road, Hingna Road, Outer Ring Road, Besa-Pipla, Jamtha, Koradi Road.
@@ -610,49 +614,50 @@ Output ready-to-copy content blocks for each requested platform, labeled with [P
         step.output = dynamicOutput;
     }
 
-    // ── Build Final Content Items ──────────────────────────────────
-    const finalContent = [];
+    // ── Build Final Content Items (Parsed per platform) ───────────────────
+    const finalContent: any[] = [];
     
-    if (distributionOutput.toLowerCase().includes("linkedin") || workflow.steps[2].output?.toLowerCase().includes("linkedin")) {
-      finalContent.push({
-        id: "linkedin_post",
-        platform: "LinkedIn",
-        agent: "Copywriter + SEO",
-        text: workflow.steps[2].output || "",
-        qcScore: qcOutput.includes("8") || qcOutput.includes("9") ? 9 : 7,
-        status: needsRevision ? "revised" : "approved",
-      });
-    }
+    // Helper: Parse content block for a specific platform using common markers
+    const parsePlatformContent = (content: string, platform: string) => {
+      const markers = [
+        `\\[${platform.toUpperCase()}_FINAL\\]`,
+        `\\[${platform.toUpperCase()}\\]`,
+        `\\*\\*${platform.toUpperCase()}\\*\\*`,
+        `${platform}:`
+      ];
+      
+      for (const marker of markers) {
+        const regex = new RegExp(`${marker}([\\s\\S]*?)(?=\\[[A-Z_]+_FINAL\\]|\\[[A-Z]+\\]|\\*\\*[A-Z]+\\*\\*|$)`, "i");
+        const match = content.match(regex);
+        if (match && match[1]?.trim()) return match[1].trim();
+      }
+      return null;
+    };
 
-    if (distributionOutput.toLowerCase().includes("instagram") || workflow.steps[4].output?.toLowerCase().includes("instagram")) {
-      finalContent.push({
-        id: "instagram_caption",
-        platform: "Instagram",
-        agent: "Copywriter + Visual Designer",
-        text: workflow.steps[4].output || "",
-        qcScore: 8,
-        status: "approved",
-      });
-    }
+    const requestedPlatforms = ["LinkedIn", "Instagram", "WhatsApp", "YouTube"];
+    const combinedOutput = `${distributionOutput}\n${workflow.steps[2].output}\n${workflow.steps[4].output}`;
 
-    if (distributionOutput.toLowerCase().includes("whatsapp")) {
-      finalContent.push({
-        id: "whatsapp_broadcast",
-        platform: "WhatsApp",
-        agent: "Copywriter + Distribution Lead",
-        text: distributionOutput || "",
-        qcScore: 8,
-        status: "approved",
-      });
-    }
+    requestedPlatforms.forEach(p => {
+      const parsedText = parsePlatformContent(combinedOutput, p);
+      if (parsedText) {
+        finalContent.push({
+          id: `${p.toLowerCase()}_${Date.now()}`,
+          platform: p,
+          agent: "GravityClaw Parsed",
+          text: parsedText,
+          qcScore: qcOutput.includes(p) ? (parseInt(qcOutput.split(p)[1]?.match(/\d+/)?.[0] || "8")) : 8,
+          status: "approved",
+        });
+      }
+    });
 
-    // Fallback if none matched (unlikely but safe)
+    // Fallback: If parsing failed but we have output, give the raw distribution block
     if (finalContent.length === 0) {
       finalContent.push({
-        id: "generated_content",
+        id: `raw_output_${Date.now()}`,
         platform: "General",
         agent: "Distribution Lead",
-        text: distributionOutput || "",
+        text: distributionOutput || workflow.steps[2].output || "",
         qcScore: 8,
         status: "approved",
       });

@@ -277,12 +277,27 @@ Write the narrative as if briefing an HNI investor or NRI buyer. Include: (1) co
 
   // ── Launch in Studio ─────────────────────────────────────────────────────
   const launchInStudio = useCallback(async () => {
-    const goal = `Plot Value Analysis & Content Campaign for ${corridor.label} — ${plotArea} sq ft plot estimated at ₹${(estimatedValue / 100000).toFixed(1)}L (₹${Math.round(subjectPPSF)}/sqft). Signal: ${signal}. Create 3 investor-grade content pieces (LinkedIn article, WhatsApp broadcast, Instagram carousel) that educate HNI buyers on current ${corridor.label} pricing, mention the ${corridor.trend} price trend, include RERA trust angle, and end with strong CTA for site visits. Use Hinglish for WhatsApp, professional English for LinkedIn.`;
+    const goal = `Plot Value Analysis & Content Campaign for ${corridor.label} — ${plotArea} sq ft plot estimated at ${formatCr(estimatedValue)} (₹${Math.round(subjectPPSF)}/sqft). Signal: ${signal}. Create 3 investor-grade content pieces (LinkedIn article, WhatsApp broadcast, Instagram carousel).`;
+    
+    const context = {
+      plotDetails: {
+        area: plotArea,
+        corridor: corridor.label,
+        circleRate,
+        marketPremium: marketVsCircle.toFixed(1),
+        estimatedValue: estimatedValue,
+        pricePerSqFt: Math.round(subjectPPSF),
+        signal,
+        factors: selectedFactors.map(id => ADJUSTMENT_FACTORS.find(f => f.id === id)?.label)
+      },
+      aiNarrative: aiNarrative || "Valuation generated manually by user."
+    };
+
     try {
       const res = await fetch("/api/studio/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ goal }),
+        body: JSON.stringify({ goal, context }),
       });
       if (res.ok) {
         toast.success("🚀 Launched in AI Studio! Check Live Tasks.");
@@ -290,7 +305,7 @@ Write the narrative as if briefing an HNI investor or NRI buyer. Include: (1) co
     } catch {
       toast.error("Failed to launch in Studio");
     }
-  }, [corridor, plotArea, estimatedValue, subjectPPSF, signal]);
+  }, [corridor, plotArea, estimatedValue, subjectPPSF, signal, aiNarrative, selectedFactors, circleRate, marketVsCircle]);
 
   const formatCr = (v: number) => {
     if (v >= 10000000) return `₹${(v / 10000000).toFixed(2)} Cr`;

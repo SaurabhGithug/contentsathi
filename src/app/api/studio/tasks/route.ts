@@ -29,7 +29,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { goal } = await req.json();
+    const { goal, context } = await req.json();
 
     let user = await prisma.user.findFirst({
       orderBy: { updatedAt: "desc" },
@@ -42,6 +42,7 @@ export async function POST(req: Request) {
       data: {
         userId: user.id,
         goal,
+        inputContext: context || null,
         source: "web",
         status: "processing",
         progress: 0,

@@ -126,17 +126,32 @@ export async function GET(request: Request) {
       })
       .slice(0, 5);
 
+    // ── 7. Real Lead Data ──────────────────────────────────────────────
+    const leads = await prisma.lead.findMany({
+      where: {
+        userId: user.id,
+        createdAt: { gte: since },
+      },
+    });
+
+    const realLeadsCount = leads.length;
+
     return NextResponse.json({
       totalImpressions: funnel.awareness,
       totalReach: funnel.interest,
-      totalLeads: funnel.inquiry,
+      totalLeads: realLeadsCount || totalLeads,
       totalClicks,
-      cpl,
-      funnel,
+      cpl: realLeadsCount > 0 ? (adSpend / realLeadsCount).toFixed(2) : cpl,
+      funnel: {
+        ...funnel,
+        inquiry: realLeadsCount || funnel.inquiry,
+        siteVisit: leads.filter((l: any) => l.status === "VISITED").length || funnel.siteVisit,
+        booking: leads.filter((l: any) => l.status === "BOOKED").length || funnel.booking,
+      },
       agentAnalytics,
       autoLearningSignal,
       compliancePosts,
-      hasRealData: analyticsRecords.length > 0,
+      hasRealData: analyticsRecords.length > 0 || realLeadsCount > 0,
     });
   } catch (error: any) {
     console.error("[ANALYTICS_GET_ENHANCED]", error);

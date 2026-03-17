@@ -43,7 +43,9 @@ export async function POST(req: Request) {
         type: "post", // Default
         platform: contentItem.platform?.toLowerCase() || "website",
         body: editedText || contentItem.text,
-        title: task.goal.substring(0, 100), // Use goal as title if none
+        title: task.goal.includes("Task:") 
+               ? task.goal.split("Task:")[1].trim().substring(0, 100)
+               : task.goal.split(/Tone:\s*[^\s]+\s*/i).pop()?.trim().substring(0, 100) || task.goal.substring(0, 100),
         qualityScore: contentItem.qcScore || 8,
         createdAt: new Date(),
       }

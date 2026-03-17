@@ -1024,85 +1024,7 @@ function SettingsContent() {
           )}
 
           {activeTab === "integrations" && (
-            <div className="p-8 animate-in fade-in slide-in-from-right-2">
-              <div className="flex items-center gap-4 mb-8">
-                <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600 shadow-sm border border-amber-100">
-                  <Zap className="w-6 h-6" />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-black text-gray-900 tracking-tight">CRM & Lead Integrations</h2>
-                  <p className="text-sm text-gray-500 font-medium">Route your high-quality leads directly to your favorite CRM or via Webhooks.</p>
-                </div>
-              </div>
-
-              <div className="space-y-8">
-                {/* CRM Section */}
-                <div className="bg-gray-50/50 rounded-3xl border border-gray-100 p-6">
-                  <h3 className="text-lg font-black text-gray-900 mb-4 flex items-center gap-2">
-                    <Users className="w-5 h-5 text-indigo-500" />
-                    Connect Your CRM
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    {[
-                      { name: "IndiaMART", icon: "🇮🇳" },
-                      { name: "NoBroker", icon: "🏠" },
-                      { name: "Custom CRM", icon: "🛠️" },
-                    ].map((crm) => (
-                      <button key={crm.name} className="flex flex-col items-center justify-center p-6 bg-white border border-gray-100 rounded-2xl hover:border-indigo-300 hover:shadow-lg transition-all group">
-                        <span className="text-3xl mb-2 group-hover:scale-110 transition-transform">{crm.icon}</span>
-                        <span className="text-sm font-black text-gray-700">{crm.name}</span>
-                        <span className="text-[10px] font-bold text-gray-400 mt-1 uppercase">Connect</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Webhooks Section */}
-                <div className="bg-gray-50/50 rounded-3xl border border-gray-100 p-6">
-                  <h3 className="text-lg font-black text-gray-900 mb-4 flex items-center gap-2">
-                    <LinkIcon className="w-5 h-5 text-indigo-500" />
-                    Webhooks & Zapier
-                  </h3>
-                  <div className="space-y-4">
-                    <div className="bg-white p-5 rounded-2xl border border-gray-100">
-                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Zapier Webhook URL</label>
-                      <div className="flex gap-2">
-                        <input type="text" placeholder="https://hooks.zapier.com/hooks/catch/..." className="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
-                        <button className="px-6 py-2 bg-indigo-600 text-white font-black text-xs rounded-xl hover:bg-indigo-700 transition-colors">Save</button>
-                      </div>
-                      <p className="text-[10px] text-gray-400 mt-2 font-medium">Leads from Plot Estimator and WhatsApp will be sent here in real-time.</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Automation Rules */}
-                <div className="bg-indigo-900 text-white rounded-[2.5rem] p-8 relative overflow-hidden">
-                   <div className="absolute right-0 top-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
-                   <h3 className="text-xl font-black mb-2 flex items-center gap-2 relative z-10">
-                     <Shield className="w-5 h-5 text-indigo-300" />
-                     Lead Intelligence Bridge
-                   </h3>
-                   <p className="text-indigo-200 text-xs font-medium mb-6 relative z-10">Define how the AI should score and route incoming leads based on their content interaction.</p>
-                   
-                   <div className="space-y-3 relative z-10">
-                     <label className="flex items-center gap-3 p-4 bg-white/5 border border-white/10 rounded-2xl cursor-pointer hover:bg-white/10 transition-colors">
-                        <input type="checkbox" className="w-4 h-4 rounded border-indigo-400 bg-transparent" />
-                        <div>
-                          <p className="text-sm font-bold">Auto-Score Leads</p>
-                          <p className="text-[10px] text-indigo-300">Score lead quality (1-10) based on which property plot they enquired about.</p>
-                        </div>
-                     </label>
-                     <label className="flex items-center gap-3 p-4 bg-white/5 border border-white/10 rounded-2xl cursor-pointer hover:bg-white/10 transition-colors">
-                        <input type="checkbox" className="w-4 h-4 rounded border-indigo-400 bg-transparent" />
-                        <div>
-                          <p className="text-sm font-bold">Notify on WhatsApp</p>
-                          <p className="text-[10px] text-indigo-300">Send me a direct WhatsApp alert when a high-intent lead is captured.</p>
-                        </div>
-                     </label>
-                   </div>
-                </div>
-              </div>
-            </div>
+            <IntegrationsTab />
           )}
           {activeTab === "profile" && (
             <div className="p-8 animate-in fade-in slide-in-from-right-2">
@@ -1428,6 +1350,224 @@ function SettingsContent() {
       )}
     </div>
   );
+
+  function IntegrationsTab() {
+    const [zapierUrl, setZapierUrl] = useState("");
+    const [isSavingZapier, setIsSavingZapier] = useState(false);
+    const [zapierSaved, setZapierSaved] = useState(false);
+    const [crmConfig, setCrmConfig] = useState<Record<string, string>>({});
+    const [expandedCrm, setExpandedCrm] = useState<string | null>(null);
+    const [autoScore, setAutoScore] = useState(false);
+    const [notifyWa, setNotifyWa] = useState(false);
+
+    useEffect(() => {
+      fetch("/api/integrations")
+        .then(r => r.json())
+        .then(d => {
+          if (d.zapierWebhookUrl) setZapierUrl(d.zapierWebhookUrl);
+          if (d.crmConfig) setCrmConfig(d.crmConfig);
+          if (d.crmConfig?.autoScore) setAutoScore(true);
+          if (d.crmConfig?.notifyWhatsapp) setNotifyWa(true);
+        })
+        .catch(() => {});
+    }, []);
+
+    const saveIntegrations = async (extra?: object) => {
+      setIsSavingZapier(true);
+      try {
+        const res = await fetch("/api/integrations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            zapierWebhookUrl: zapierUrl,
+            crmConfig: { ...crmConfig, autoScore, notifyWhatsapp: notifyWa, ...extra },
+          }),
+        });
+        if (!res.ok) throw new Error((await res.json()).error || "Save failed");
+        setZapierSaved(true);
+        toast.success("✅ Integrations saved! Test ping sent to Zapier.");
+        setTimeout(() => setZapierSaved(false), 3000);
+      } catch (err: any) {
+        toast.error(err.message || "Failed to save integrations");
+      } finally {
+        setIsSavingZapier(false);
+      }
+    };
+
+    const CRM_OPTIONS = [
+      {
+        id: "indiamart",
+        name: "IndiaMART",
+        icon: "🇮🇳",
+        desc: "Pipe IndiaMART buyer inquiries directly into your leads pipeline.",
+        fields: [{ key: "indiamart_api_key", label: "IndiaMART API Key", type: "text", placeholder: "Get from business.indiamart.com" }],
+      },
+      {
+        id: "nobroker",
+        name: "NoBroker",
+        icon: "🏠",
+        desc: "Auto-import leads captured from your NoBroker property listings.",
+        fields: [
+          { key: "nobroker_email", label: "NoBroker Account Email", type: "email", placeholder: "your@email.com" },
+          { key: "nobroker_webhook", label: "NoBroker Webhook URL", type: "url", placeholder: "https://hooks.nobroker.com/..." },
+        ],
+      },
+      {
+        id: "custom_crm",
+        name: "Custom CRM",
+        icon: "🛠️",
+        desc: "Connect any CRM using a custom webhook endpoint.",
+        fields: [
+          { key: "custom_crm_name", label: "CRM Name", type: "text", placeholder: "e.g., Zoho, HubSpot, Salesforce" },
+          { key: "custom_crm_webhook", label: "Webhook URL", type: "url", placeholder: "https://your-crm.com/api/leads" },
+          { key: "custom_crm_token", label: "Auth Token (Optional)", type: "text", placeholder: "Bearer token or API key" },
+        ],
+      },
+    ];
+
+    return (
+      <div className="p-8 animate-in fade-in slide-in-from-right-2 space-y-8">
+        {/* Header */}
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600 shadow-sm border border-amber-100">
+            <Zap className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-black text-gray-900 tracking-tight">CRM &amp; Lead Integrations</h2>
+            <p className="text-sm text-gray-500 font-medium">Route your high-quality leads directly to your favorite CRM or via Webhooks.</p>
+          </div>
+        </div>
+
+        {/* CRM Section */}
+        <div className="bg-gray-50/50 rounded-3xl border border-gray-100 p-6 space-y-4">
+          <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
+            <Users className="w-5 h-5 text-indigo-500" />
+            Connect Your CRM
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {CRM_OPTIONS.map((crm) => {
+              const isExpanded = expandedCrm === crm.id;
+              const isConfigured = crm.fields.some(f => crmConfig[f.key]);
+              return (
+                <div key={crm.id} className={`rounded-2xl border transition-all overflow-hidden ${isExpanded ? "border-indigo-300 shadow-lg" : "border-gray-100 bg-white"}`}>
+                  <button
+                    onClick={() => setExpandedCrm(isExpanded ? null : crm.id)}
+                    className="w-full flex flex-col items-center justify-center p-6 hover:bg-indigo-50/30 transition-all group"
+                  >
+                    <span className="text-3xl mb-2 group-hover:scale-110 transition-transform">{crm.icon}</span>
+                    <span className="text-sm font-black text-gray-700">{crm.name}</span>
+                    {isConfigured ? (
+                      <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full mt-1.5 border border-emerald-100">
+                        <CheckCircle2 className="w-3 h-3" /> Connected
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold text-gray-400 mt-1 uppercase">{isExpanded ? "Collapse" : "Configure"}</span>
+                    )}
+                  </button>
+                  {isExpanded && (
+                    <div className="px-4 pb-5 border-t border-gray-100 pt-4 space-y-3 bg-indigo-50/30">
+                      <p className="text-xs font-medium text-gray-500 leading-relaxed">{crm.desc}</p>
+                      {crm.fields.map(f => (
+                        <div key={f.key}>
+                          <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">{f.label}</label>
+                          <input
+                            type={f.type}
+                            placeholder={f.placeholder}
+                            value={crmConfig[f.key] || ""}
+                            onChange={e => setCrmConfig(prev => ({ ...prev, [f.key]: e.target.value }))}
+                            className="w-full px-3 py-2 rounded-xl border border-indigo-200 text-xs focus:ring-2 focus:ring-indigo-400 outline-none bg-white"
+                          />
+                        </div>
+                      ))}
+                      <button
+                        onClick={() => { saveIntegrations(); setExpandedCrm(null); }}
+                        className="w-full py-2 bg-indigo-600 text-white text-xs font-black rounded-xl hover:bg-indigo-700 transition-colors mt-1"
+                      >
+                        Save {crm.name} Config
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Zapier / Webhook Section */}
+        <div className="bg-gray-50/50 rounded-3xl border border-gray-100 p-6 space-y-4">
+          <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
+            <LinkIcon className="w-5 h-5 text-indigo-500" />
+            Webhooks &amp; Zapier
+          </h3>
+          <div className="bg-white p-5 rounded-2xl border border-gray-100 space-y-3">
+            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest">Zapier Webhook URL</label>
+            <div className="flex gap-2">
+              <input
+                type="url"
+                placeholder="https://hooks.zapier.com/hooks/catch/..."
+                value={zapierUrl}
+                onChange={e => setZapierUrl(e.target.value)}
+                className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+              />
+              <button
+                onClick={() => saveIntegrations()}
+                disabled={isSavingZapier}
+                className="px-6 py-2.5 bg-indigo-600 text-white font-black text-xs rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center gap-2 whitespace-nowrap"
+              >
+                {isSavingZapier ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                {zapierSaved ? "Saved! ✅" : "Save & Test"}
+              </button>
+            </div>
+            <p className="text-[10px] text-gray-400 font-medium">
+              ContentSathi will send a test ping on first save, then route new leads in real-time. Works with Zapier, Make, n8n, or any HTTPS endpoint.
+            </p>
+          </div>
+        </div>
+
+        {/* Lead Intelligence Bridge */}
+        <div className="bg-indigo-900 text-white rounded-[2.5rem] p-8 relative overflow-hidden">
+          <div className="absolute right-0 top-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+          <h3 className="text-xl font-black mb-2 flex items-center gap-2 relative z-10">
+            <Shield className="w-5 h-5 text-indigo-300" />
+            Lead Intelligence Bridge
+          </h3>
+          <p className="text-indigo-200 text-xs font-medium mb-6 relative z-10">Define how the AI should score and route incoming leads based on their content interaction.</p>
+          <div className="space-y-3 relative z-10">
+            <label className="flex items-center gap-3 p-4 bg-white/5 border border-white/10 rounded-2xl cursor-pointer hover:bg-white/10 transition-colors">
+              <input
+                type="checkbox"
+                checked={autoScore}
+                onChange={e => { setAutoScore(e.target.checked); }}
+                className="w-4 h-4 rounded border-indigo-400"
+              />
+              <div>
+                <p className="text-sm font-bold">Auto-Score Leads</p>
+                <p className="text-[10px] text-indigo-300">Score lead quality (1-10) based on which property plot they enquired about.</p>
+              </div>
+            </label>
+            <label className="flex items-center gap-3 p-4 bg-white/5 border border-white/10 rounded-2xl cursor-pointer hover:bg-white/10 transition-colors">
+              <input
+                type="checkbox"
+                checked={notifyWa}
+                onChange={e => { setNotifyWa(e.target.checked); }}
+                className="w-4 h-4 rounded border-indigo-400"
+              />
+              <div>
+                <p className="text-sm font-bold">Notify on WhatsApp</p>
+                <p className="text-[10px] text-indigo-300">Send me a direct WhatsApp alert when a high-intent lead is captured.</p>
+              </div>
+            </label>
+            <button
+              onClick={() => saveIntegrations()}
+              className="mt-2 px-6 py-2.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-black rounded-xl transition-colors"
+            >
+              Save Automation Settings
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   function ProjectMediaTab() {
     const [projectAssets, setProjectAssets] = useState<any[]>([]);

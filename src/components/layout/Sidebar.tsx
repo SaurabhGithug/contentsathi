@@ -57,6 +57,7 @@ const navGroups = [
       { name: "Dashboard",              href: "/dashboard",          icon: LayoutDashboard },
       { name: "Agent Team",             href: "/agents",             icon: Users },
       { name: "Approvals & QC",         href: "/approvals",          icon: BookOpen },
+      { name: "Leads & Conversion",     href: "/leads",              icon: Users, badge: "LIVE" },
       { name: "Analytics",              href: "/analytics",          icon: Activity },
       { name: "Account Audit",          href: "/account-audit",      icon: SearchCheck },
     ]
