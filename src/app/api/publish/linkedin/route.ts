@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export async function POST(req: Request) {
     let calendarItemId: string | undefined;
@@ -8,34 +10,34 @@ export async function POST(req: Request) {
       const { title, imageUrl, calendarItemId } = bodyText;
       const bodyContent = bodyText.body || bodyText.postText;
 
-      let userId = bodyText.userId;
+      let userId = bodyText.userId || req.headers.get("x-cron-user-id");
       if (!userId) {
-        userId = req.headers.get("x-cron-user-id");
+        const session = await getServerSession(authOptions);
+        if (session?.user?.email) {
+          const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+          if (user) userId = user.id;
+        }
+      }
+
+      if (!userId) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
 
       let accessToken = bodyText.accessToken;
       let providerAccountId = bodyText.providerAccountId;
 
-    if (!accessToken || !providerAccountId) {
-      if (!userId) {
-        return NextResponse.json({ error: "User ID required to fetch LinkedIn credentials." }, { status: 400 });
+      if (!accessToken || !providerAccountId) {
+        const account = await prisma.socialAccount.findFirst({
+          where: { userId, platform: 'linkedin', isActive: true }
+        });
+
+        if (!account || !account.accessToken || !account.accountId) {
+          return NextResponse.json({ error: "LinkedIn account not connected in database." }, { status: 400 });
+        }
+
+        accessToken = account.accessToken;
+        providerAccountId = account.accountId;
       }
-      
-      const account = await prisma.socialAccount.findFirst({
-        where: { userId, platform: 'linkedin', isActive: true }
-      });
-
-      if (!account || !account.accessToken || !account.accountId) {
-        return NextResponse.json({ error: "LinkedIn account not connected in database." }, { status: 400 });
-      }
-
-      accessToken = account.accessToken;
-      providerAccountId = account.accountId;
-    }
-
-    if (!providerAccountId || !accessToken) {
-      return NextResponse.json({ error: "LinkedIn account not connected." }, { status: 400 });
-    }
 
     // Determine urn (either organization urn or person urn based on auth)
     const authorUrn = providerAccountId.startsWith("urn:li:") 

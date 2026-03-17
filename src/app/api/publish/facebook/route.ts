@@ -1,15 +1,42 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export async function POST(req: Request) {
   let calendarItemId: string | undefined;
   try {
     const bodyText = await req.json();
-    const { body, imageUrl, accessToken, providerAccountId } = bodyText;
+    const { body, imageUrl } = bodyText;
     calendarItemId = bodyText.calendarItemId;
+    
+    let userId = bodyText.userId || req.headers.get("x-cron-user-id");
+    if (!userId) {
+      const session = await getServerSession(authOptions);
+      if (session?.user?.email) {
+        const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+        if (user) userId = user.id;
+      }
+    }
+
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    let accessToken = bodyText.accessToken;
+    let providerAccountId = bodyText.providerAccountId;
 
     if (!accessToken || !providerAccountId) {
-      return NextResponse.json({ error: "Facebook account not connected." }, { status: 400 });
+      const account = await prisma.socialAccount.findFirst({
+        where: { userId, platform: 'facebook', isActive: true }
+      });
+
+      if (!account || !account.accessToken || !account.accountId) {
+        return NextResponse.json({ error: "Facebook account not connected in database." }, { status: 400 });
+      }
+
+      accessToken = account.accessToken;
+      providerAccountId = account.accountId;
     }
 
     // providerAccountId should be the Facebook Page ID

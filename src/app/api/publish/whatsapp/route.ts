@@ -1,15 +1,42 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export async function POST(req: Request) {
   let calendarItemId: string | undefined;
   try {
     const bodyText = await req.json();
-    const { body, imageUrl, accessToken, providerAccountId, broadcastList } = bodyText;
+    const { body, imageUrl, broadcastList } = bodyText;
     calendarItemId = bodyText.calendarItemId;
+    
+    let userId = bodyText.userId || req.headers.get("x-cron-user-id");
+    if (!userId) {
+      const session = await getServerSession(authOptions);
+      if (session?.user?.email) {
+        const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+        if (user) userId = user.id;
+      }
+    }
 
-    if (!providerAccountId || !accessToken) {
-      return NextResponse.json({ error: "WhatsApp account not connected." }, { status: 400 });
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    let accessToken = bodyText.accessToken;
+    let providerAccountId = bodyText.providerAccountId;
+
+    if (!accessToken || !providerAccountId) {
+      const account = await prisma.socialAccount.findFirst({
+        where: { userId, platform: 'whatsapp', isActive: true }
+      });
+
+      if (!account || !account.accessToken || !account.accountId) {
+        return NextResponse.json({ error: "WhatsApp account not connected in database." }, { status: 400 });
+      }
+
+      accessToken = account.accessToken;
+      providerAccountId = account.accountId;
     }
 
     // Parse the broadcastList
