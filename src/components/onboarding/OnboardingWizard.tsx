@@ -64,6 +64,21 @@ const USP_OPTIONS = [
   { id: "premium", icon: Star, label: "Premium Location" },
   { id: "vastu", icon: Compass, label: "Vastu Compliant" },
   { id: "ready_possession", icon: Key, label: "Ready Possession" },
+  { id: "metro_connectivity", icon: Zap, label: "Metro Connectivity" },
+];
+
+const MARKETING_STAGES = [
+  { id: "pre_launch", label: "Pre-Launch (Generating Buzz)" },
+  { id: "launch", label: "Launch (Closing Early Deals)" },
+  { id: "construction", label: "Construction (Maintaining Interest)" },
+  { id: "ready", label: "Ready (Final Inventory Sales)" },
+];
+
+const MARKETING_GAPS = [
+  { id: "leads_quality", label: "Getting leads, but low quality" },
+  { id: "low_reach", label: "Great product, but no one knows" },
+  { id: "no_trust", label: "People inquire, but don't trust enough to visit" },
+  { id: "content_fatigue", label: "Need fresh angles for old stocks" },
 ];
 
 // ── Loading Messages ──────────────────────────────────────────────────────
@@ -81,6 +96,9 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
   // ── Step 2: 4 Questions ─────────────────────────────────────────────────
   const [propertyType, setPropertyType] = useState("");
   const [city, setCity] = useState("");
+  const [microMarket, setMicroMarket] = useState("");
+  const [marketingStage, setMarketingStage] = useState("");
+  const [marketingGap, setMarketingGap] = useState("");
   const [customerType, setCustomerType] = useState("");
   const [contentPurpose, setContentPurpose] = useState("");
   const [usps, setUsps] = useState<string[]>([]);
@@ -109,6 +127,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
   };
 
   const canProceedStep2 = propertyType && city.trim().length >= 2 && customerType && contentPurpose && usps.length > 0;
+  const canProceedStep3 = marketingStage && marketingGap && microMarket.trim().length >= 2;
 
   // ── Submit onboarding + generate brand profile ──────────────────────────
   async function submitOnboarding() {
@@ -122,6 +141,9 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
         body: JSON.stringify({
           propertyType,
           city,
+          microMarket,
+          marketingStage,
+          marketingGap,
           customerType,
           contentPurpose,
           usps,
@@ -239,19 +261,32 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
               </div>
 
               {/* Q2: City */}
-              <div>
-                <label className="font-bold text-sm text-gray-700 mb-2 flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-black flex items-center justify-center">2</span>
-                  Which city are you based in?
-                </label>
-                <input
-                  type="text"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  placeholder="e.g., Nagpur, Maharashtra"
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-600 font-medium text-sm"
-                />
-              </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="font-bold text-sm text-gray-700 mb-2 flex items-center gap-2">
+                       City
+                    </label>
+                    <input
+                      type="text"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      placeholder="e.g., Nagpur"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-600 font-medium text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-sm text-gray-700 mb-2 flex items-center gap-2">
+                       Micro-market / Locality
+                    </label>
+                    <input
+                      type="text"
+                      value={microMarket}
+                      onChange={(e) => setMicroMarket(e.target.value)}
+                      placeholder="e.g., Wardha Road"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-600 font-medium text-sm"
+                    />
+                  </div>
+                </div>
 
               {/* Q3: Customer Type */}
               <div>
@@ -296,8 +331,48 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
           {step === 3 && (
             <div className="space-y-6 animate-in slide-in-from-right-8 duration-500 max-h-[500px] overflow-y-auto pr-2 scrollbar-thin">
               <div>
-                <h2 className="text-2xl font-black text-gray-900 tracking-tight mb-1">Your Content Strategy</h2>
-                <p className="text-sm text-gray-400 font-medium">What is your goal and what makes you special?</p>
+                <h2 className="text-2xl font-black text-gray-900 tracking-tight mb-1">Market Position</h2>
+                <p className="text-sm text-gray-400 font-medium">Where is your project today and what&apos;s your biggest challenge?</p>
+              </div>
+
+              {/* Marketing Stage */}
+              <div>
+                <label className="font-bold text-sm text-gray-700 mb-2">Current Project Stage</label>
+                <div className="grid grid-cols-1 gap-2">
+                  {MARKETING_STAGES.map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => setMarketingStage(s.id)}
+                      className={`p-3 rounded-xl border-2 text-left transition-all text-sm font-bold ${
+                        marketingStage === s.id
+                          ? "border-indigo-600 bg-indigo-50 text-indigo-700"
+                          : "border-gray-100 hover:border-indigo-100 text-gray-500"
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Marketing Gap */}
+              <div>
+                <label className="font-bold text-sm text-gray-700 mb-2">Your Biggest Marketing Gap</label>
+                <div className="grid grid-cols-1 gap-2">
+                  {MARKETING_GAPS.map((g) => (
+                    <button
+                      key={g.id}
+                      onClick={() => setMarketingGap(g.id)}
+                      className={`p-3 rounded-xl border-2 text-left transition-all text-sm font-bold ${
+                        marketingGap === g.id
+                          ? "border-indigo-600 bg-indigo-50 text-indigo-700"
+                          : "border-gray-100 hover:border-indigo-100 text-gray-500"
+                      }`}
+                    >
+                      {g.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Q4: Content Purpose */}

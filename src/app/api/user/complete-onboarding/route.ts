@@ -102,7 +102,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { propertyType, city, customerType, contentPurpose, usps } = body;
+    const { propertyType, city, microMarket, marketingStage, marketingGap, customerType, contentPurpose, usps } = body;
 
     // Legacy support for old onboarding fields
     const { businessType, specificNiche, location, tone, languages } = body;
@@ -129,7 +129,9 @@ export async function POST(req: Request) {
         ? ["trusted RERA compliance", "video walkthroughs", "end-to-end documentation support"]
         : ["dream home emotion", "family safety", "location convenience", "EMI affordability"],
       talkingPoints: uspLabels.slice(0, 3),
-      localContext: `${locationVal} real estate market`,
+      localContext: `${city || location || ""} - ${microMarket || ""}`,
+      marketingStage: marketingStage || "launch",
+      marketingGap: marketingGap || "none",
       contentThemes: [
         "Trust building — Why buy from me",
         "Market education — Expert tips",
@@ -146,13 +148,13 @@ export async function POST(req: Request) {
       where: { userId: user.id },
       update: {
         industry: propertyType || businessType || "real_estate",
-        location: locationVal,
+        location: `${locationVal} (${microMarket || ""})`,
         tone: tone || "Professional & Trustworthy",
         propertyType: propertyType || null,
         customerType: customerType || null,
         contentPurpose: contentPurpose || null,
         usps: usps || [],
-        contentDna: contentDna,
+        contentDna: contentDna as any,
         audienceDescription: custLabel,
         primaryLanguage: (languages?.[0] as any) || "hinglish",
         secondaryLanguage: (languages?.[1] as any) || null,
@@ -160,15 +162,15 @@ export async function POST(req: Request) {
       create: {
         userId: user.id,
         brandName: user.name || "My Business",
-        brandDescription: `${propLabel} business based in ${locationVal}.`,
+        brandDescription: `${propLabel} business based in ${locationVal}. Stage: ${marketingStage}.`,
         industry: propertyType || businessType || "real_estate",
-        location: locationVal,
+        location: `${locationVal} (${microMarket || ""})`,
         tone: tone || "Professional & Trustworthy",
         propertyType: propertyType || null,
         customerType: customerType || null,
         contentPurpose: contentPurpose || null,
         usps: usps || [],
-        contentDna: contentDna,
+        contentDna: contentDna as any,
         audienceDescription: custLabel,
         primaryLanguage: (languages?.[0] as any) || "hinglish",
         secondaryLanguage: (languages?.[1] as any) || null,

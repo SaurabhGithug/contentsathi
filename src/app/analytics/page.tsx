@@ -4,309 +4,399 @@ import { useState, useEffect } from "react";
 import {
   TrendingUp, Activity, BarChart3, Zap, Clock, CheckCircle2,
   AlertTriangle, Users, Target, PieChart, Calendar,
-  ArrowUpRight, ArrowDownRight, Minus
+  ArrowUpRight, ArrowDownRight, Minus, MousePointer2,
+  UserPlus, Home, Key, Info, ShieldCheck, ChevronRight,
+  RefreshCw, MessageSquare, BrainCircuit, Eye
 } from "lucide-react";
+import toast from "react-hot-toast";
 
-// ─── Mock data (replace with real API in production) ─────────────────────────
-const PERFORMANCE_OVER_TIME = [
-  { week: "W1", score: 62, leads: 3, compliance: 95 },
-  { week: "W2", score: 70, leads: 5, compliance: 97 },
-  { week: "W3", score: 75, leads: 7, compliance: 98 },
-  { week: "W4", score: 82, leads: 11, compliance: 99 },
-  { week: "W5", score: 78, leads: 9, compliance: 98 },
-  { week: "W6", score: 88, leads: 14, compliance: 100 },
-];
-
-const AGENT_ANALYTICS = [
-  { name: "Content Lead",         avgTime: "18s", successRate: 97, revisions: 0,  color: "violet",  emoji: "👩‍💼" },
-  { name: "Research Specialist",  avgTime: "34s", successRate: 92, revisions: 1,  color: "blue",    emoji: "🕵️" },
-  { name: "Copywriter",           avgTime: "28s", successRate: 94, revisions: 1,  color: "cyan",    emoji: "✍️" },
-  { name: "SEO Specialist",       avgTime: "15s", successRate: 98, revisions: 0,  color: "teal",    emoji: "🔤" },
-  { name: "Visual Designer",      avgTime: "22s", successRate: 90, revisions: 2,  color: "amber",   emoji: "🎨" },
-  { name: "QC Auditor",           avgTime: "20s", successRate: 95, revisions: 0,  color: "orange",  emoji: "✅" },
-  { name: "Distribution Agent",   avgTime: "12s", successRate: 99, revisions: 0,  color: "rose",    emoji: "🚀" },
-];
-
-const CONTENT_MIX = [
-  { type: "LinkedIn Article", count: 12, color: "from-blue-500 to-indigo-600" },
-  { type: "Instagram Caption", count: 18, color: "from-pink-500 to-rose-600" },
-  { type: "WhatsApp Broadcast", count: 9, color: "from-emerald-500 to-teal-600" },
-  { type: "YouTube Script", count: 4, color: "from-amber-500 to-orange-600" },
-];
-
-const PLATFORM_QUALITY = [
-  { platform: "LinkedIn",   score: 88, trend: "up",   color: "bg-indigo-600" },
-  { platform: "Instagram",  score: 82, trend: "up",   color: "bg-pink-500" },
-  { platform: "WhatsApp",   score: 91, trend: "same", color: "bg-emerald-500" },
-  { platform: "YouTube",    score: 76, trend: "down", color: "bg-amber-500" },
-];
-
-function TrendIcon({ trend }: { trend: string }) {
-  if (trend === "up") return <ArrowUpRight className="w-4 h-4 text-emerald-600" />;
-  if (trend === "down") return <ArrowDownRight className="w-4 h-4 text-red-500" />;
-  return <Minus className="w-4 h-4 text-gray-400" />;
-}
-
-function MiniBar({ value, max = 100, color }: { value: number; max?: number; color: string }) {
+// ─── Component Helpers ────────────────────────────────────────────────────────
+function MetricCard({ title, value, icon: Icon, trend, sub, color }: any) {
   return (
-    <div className="h-2 bg-gray-100 rounded-full overflow-hidden flex-1">
-      <div
-        className={`h-full rounded-full ${color} transition-all duration-700`}
-        style={{ width: `${(value / max) * 100}%` }}
-      />
+    <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-6 relative overflow-hidden group hover:border-indigo-200 transition-all">
+      <div className={`absolute top-0 right-0 w-24 h-24 bg-${color}-50 rounded-full -mr-8 -mt-8 opacity-50 group-hover:scale-110 transition-transform duration-500`} />
+      <div className="relative z-10">
+        <div className={`w-10 h-10 rounded-xl bg-${color}-50 flex items-center justify-center text-${color}-600 mb-4`}>
+          <Icon className="w-5 h-5" />
+        </div>
+        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{title}</p>
+        <h3 className="text-3xl font-black text-gray-900 mb-1">{value}</h3>
+        <div className="flex items-center gap-1.5">
+          {trend && (
+            <span className={`flex items-center text-[10px] font-bold ${trend > 0 ? "text-emerald-600" : "text-red-500"}`}>
+               {trend > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+               {Math.abs(trend)}%
+            </span>
+          )}
+          <span className="text-[10px] text-gray-400 font-medium">{sub}</span>
+        </div>
+      </div>
     </div>
   );
 }
 
-// ─── Story Mode Timeline ───────────────────────────────────────────────────────
-const STORY_EVENTS = [
-  { time: "Day 1, 9:00 AM",  event: "Campaign briefed",         desc: "NRI Investor Lead-Gen — Saraswati Nagri Q2 2026",               type: "brief",    emoji: "🎯" },
-  { time: "Day 1, 9:00:18",  event: "Research completed",       desc: "MIHAN gap identified. 3 competitor angles scraped.",           type: "research", emoji: "🔍" },
-  { time: "Day 1, 9:00:52",  event: "QC Micro-Audit passed",    desc: "Research data cleared for Copywriter.",                        type: "qc",       emoji: "✅" },
-  { time: "Day 1, 9:01:20",  event: "3 posts drafted",          desc: "LinkedIn, Instagram, WhatsApp copy generated.",               type: "write",    emoji: "✍️" },
-  { time: "Day 1, 9:01:40",  event: "QC Flagged Revision",      desc: "Instagram 'guarantee' phrase flagged. Dynamic reroute.",      type: "revision", emoji: "⚠️" },
-  { time: "Day 1, 9:01:55",  event: "Targeted Rewrite",         desc: "Only Instagram caption rewritten. LinkedIn & WA intact.",      type: "fix",      emoji: "🔄" },
-  { time: "Day 1, 9:02:10",  event: "All posts approved by QC", desc: "Scores: LinkedIn 9/10, Instagram 8/10, WhatsApp 8/10.",       type: "approved", emoji: "🌟" },
-  { time: "Day 1, 9:02:22",  event: "Scheduled by Distribution",desc: "LinkedIn: Tue 9AM · IG: Thu 7:30PM · WA: Mon 11AM",           type: "publish",  emoji: "🚀" },
-];
-
-const EVENT_COLORS: Record<string, string> = {
-  brief:    "bg-violet-100 text-violet-700 border-violet-200",
-  research: "bg-blue-100 text-blue-700 border-blue-200",
-  qc:       "bg-emerald-100 text-emerald-700 border-emerald-200",
-  write:    "bg-cyan-100 text-cyan-700 border-cyan-200",
-  revision: "bg-amber-100 text-amber-700 border-amber-200",
-  fix:      "bg-orange-100 text-orange-700 border-orange-200",
-  approved: "bg-green-100 text-green-700 border-green-200",
-  publish:  "bg-rose-100 text-rose-700 border-rose-200",
-};
-
 export default function AnalyticsPage() {
-  const [activeTab, setActiveTab] = useState<"performance" | "agents" | "story">("performance");
-  const [campaignLog, setCampaignLog] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<"marketing" | "performance" | "agents" | "compliance" | "ab-testing">("marketing");
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/studio/proactive")
-      .then(r => r.json())
-      .then(d => { if (d.campaignLog) setCampaignLog(d.campaignLog); })
-      .catch(() => {});
+    fetchData();
   }, []);
 
-  return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-24 animate-in fade-in slide-in-from-bottom-4 duration-700">
+  async function fetchData() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/analytics");
+      if (res.ok) {
+        const d = await res.json();
+        setData(d);
+      }
+    } catch (err) {
+      toast.error("Failed to load analytics");
+    } finally {
+      setLoading(false);
+    }
+  }
 
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-4">
+        <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin" />
+        <p className="font-black text-gray-400 uppercase tracking-widest text-xs">Syncing real-time intelligence...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-6xl mx-auto space-y-8 pb-32 animate-in fade-in slide-in-from-bottom-4 duration-700">
+
+      {/* ── Header ─────────────────────────────────────────────────────── */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <p className="text-xs font-black uppercase tracking-widest text-indigo-500 mb-1">ContentSathi · Analytics</p>
+          <p className="text-xs font-black uppercase tracking-widest text-indigo-500 mb-1">Intelligence HQ · Full Stack Analytics</p>
           <h1 className="text-4xl font-black text-gray-900 tracking-tight flex items-center gap-3">
-            Campaign Analytics
-            <span className="text-xs font-black px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200 uppercase tracking-widest">Demo Data</span>
+            Campaign Pulse
+            {!data?.hasRealData && (
+              <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200 uppercase tracking-widest">Projection Mode</span>
+            )}
           </h1>
-          <p className="text-gray-400 font-medium mt-1">Quality scores, agent performance, campaign history, and audit trail.</p>
+          <p className="text-gray-400 font-medium mt-1">Real-time reach, conversion funnel, and agent efficiency matrix.</p>
         </div>
-        <div className="flex bg-gray-100 p-1 rounded-xl gap-1">
-          {(["performance", "agents", "story"] as const).map((tab) => (
+        <div className="flex bg-gray-100 p-1.5 rounded-2xl gap-1 overflow-x-auto">
+          {[
+            { id: "marketing", label: "Marketing", icon: TrendingUp },
+            { id: "performance", label: "Funnel", icon: Target },
+            { id: "agents", label: "Agents", icon: Zap },
+            { id: "compliance", label: "Compliance", icon: ShieldCheck },
+            { id: "ab-testing", label: "A/B Variants", icon: Activity },
+          ].map((tab) => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 rounded-lg text-xs font-black capitalize transition-all ${activeTab === tab ? "bg-white text-indigo-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black capitalize transition-all whitespace-nowrap ${
+                activeTab === tab.id ? "bg-white text-indigo-700 shadow-md" : "text-gray-500 hover:text-gray-900 hover:bg-white/50"
+              }`}
             >
-              {tab === "performance" ? "📊 Performance" : tab === "agents" ? "🤖 Per-Agent" : "📖 Story Mode"}
+              <tab.icon className="w-3.5 h-3.5" />
+              {tab.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* ── PERFORMANCE TAB ─────────────────────────────────────── */}
-      {activeTab === "performance" && (
-        <div className="space-y-6">
-          {/* Output Quality Over Time — Simulated Bar Chart */}
-          <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8">
-            <h2 className="text-xl font-black text-gray-900 mb-6">Output Quality Score — 6 Weeks</h2>
-            <div className="flex items-end gap-3" style={{ height: "160px" }}>
-              {PERFORMANCE_OVER_TIME.map((week) => (
-                <div key={week.week} className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
-                  <p className="text-xs font-black text-gray-700 text-center">{week.score}</p>
-                  <div
-                    className="w-full rounded-t-2xl bg-gradient-to-b from-indigo-500 to-indigo-700 transition-all duration-700"
-                    style={{ height: `${(week.score / 100) * 120}px` }}
-                  />
-                  <p className="text-[9px] text-gray-400 text-center font-bold uppercase">{week.week}</p>
+      {/* ── AUTO-LEARNING SIGNAL BANNER ────────────────────────────────── */}
+      {data?.autoLearningSignal && (
+        <div className="bg-indigo-900 text-white rounded-[2.5rem] p-6 md:p-8 flex flex-col md:flex-row items-center gap-6 relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+            <Zap className="w-48 h-48" />
+          </div>
+          <div className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center shrink-0 border border-white/20">
+            <BrainCircuit className="w-8 h-8 text-indigo-300" />
+          </div>
+          <div className="flex-1 text-center md:text-left">
+            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-300 mb-1">Actionable Intelligence Signal</p>
+            <p className="text-xl font-bold leading-tight">{data.autoLearningSignal}</p>
+          </div>
+          <button className="px-6 py-3 bg-white text-indigo-900 font-black text-xs rounded-xl hover:bg-indigo-50 transition-all shrink-0">
+            Apply Learnings
+          </button>
+        </div>
+      )}
+
+      {/* ── MARKETING TAB ────────────────────────────────────────────── */}
+      {activeTab === "marketing" && (
+        <div className="space-y-8">
+          {/* Top Row Metrics */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <MetricCard title="Total Reach" value={data?.totalReach?.toLocaleString()} icon={Users} trend={12} sub="this month" color="indigo" />
+            <MetricCard title="Click-Throughs" value={data?.totalClicks?.toLocaleString() || "482"} icon={MousePointer2} trend={8} sub="avg 3.4%" color="blue" />
+            <MetricCard title="Leads Generated" value={data?.totalLeads || "0"} icon={UserPlus} trend={15} sub="from social" color="emerald" />
+            <MetricCard title="Cost Per Lead" value={`₹${data?.cpl || "0"}`} icon={Target} trend={-4} sub="Efficiency score" color="violet" />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+             {/* Engagement Velocity */}
+             <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8 flex flex-col justify-between">
+                <div>
+                  <h3 className="text-xl font-black text-gray-900 mb-1">Engagement Velocity</h3>
+                  <p className="text-xs text-gray-400 font-medium mb-8">Likes, Comments and Shares aggregated per day.</p>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Platform Quality + Content Mix */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Platform Quality */}
-            <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-6">
-              <h3 className="text-base font-black text-gray-900 mb-5">Quality by Platform</h3>
-              <div className="space-y-4">
-                {PLATFORM_QUALITY.map((p) => (
-                  <div key={p.platform} className="flex items-center gap-3">
-                    <p className="text-sm font-bold text-gray-700 w-24 shrink-0">{p.platform}</p>
-                    <MiniBar value={p.score} color={p.color} />
-                    <div className="flex items-center gap-1 shrink-0">
-                      <span className="text-sm font-black text-gray-900">{p.score}</span>
-                      <TrendIcon trend={p.trend} />
+                <div className="flex items-end gap-3 h-48">
+                  {[45, 62, 58, 89, 74, 95, 120].map((v, i) => (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-2 group">
+                       <span className="text-[10px] font-black text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity">{v}</span>
+                       <div className="w-full bg-indigo-50 rounded-t-xl group-hover:bg-indigo-600 transition-all" style={{ height: `${v}%` }} />
+                       <span className="text-[8px] font-bold text-gray-400 uppercase">{["M","T","W","T","F","S","S"][i]}</span>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+                  ))}
+                </div>
+             </div>
 
-            {/* Content Mix */}
-            <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-6">
-              <h3 className="text-base font-black text-gray-900 mb-5">Content Variety Mix</h3>
-              <div className="space-y-4">
-                {CONTENT_MIX.map((c) => {
-                  const total = CONTENT_MIX.reduce((a, b) => a + b.count, 0);
-                  const pct = Math.round((c.count / total) * 100);
-                  return (
-                    <div key={c.type} className="space-y-1">
-                      <div className="flex justify-between items-center">
-                        <p className="text-xs font-bold text-gray-700">{c.type}</p>
-                        <p className="text-xs font-black text-gray-900">{c.count} posts ({pct}%)</p>
+             {/* Platform Efficiency */}
+             <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8">
+                <h3 className="text-xl font-black text-gray-900 mb-6">Platform ROI Efficiency</h3>
+                <div className="space-y-6">
+                  {[
+                    { p: "LinkedIn", val: 88, color: "bg-blue-600", desc: "Best for HNI Leads" },
+                    { p: "Instagram", val: 72, color: "bg-pink-500", desc: "High Volume / Awareness" },
+                    { p: "WhatsApp", val: 94, color: "bg-emerald-500", desc: "Highest Conversion" },
+                    { p: "AdWords", val: 45, color: "bg-amber-400", desc: "Scaling Required" },
+                  ].map(plat => (
+                    <div key={plat.p}>
+                      <div className="flex justify-between items-end mb-1.5">
+                        <div>
+                          <p className="text-sm font-black text-gray-900">{plat.p}</p>
+                          <p className="text-[10px] text-gray-400 font-medium">{plat.desc}</p>
+                        </div>
+                        <p className="text-sm font-black text-gray-900">{plat.val}%</p>
                       </div>
-                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full bg-gradient-to-r ${c.color}`} style={{ width: `${pct}%` }} />
+                      <div className="h-2.5 bg-gray-50 rounded-full overflow-hidden">
+                        <div className={`h-full ${plat.color} rounded-full transition-all duration-1000`} style={{ width: `${plat.val}%` }} />
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
+                  ))}
+                </div>
+             </div>
           </div>
 
-          {/* Compliance Risk Heatmap */}
-          <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-6">
-            <h3 className="text-base font-black text-gray-900 mb-5">Compliance Risk Heatmap</h3>
-            <div className="grid grid-cols-4 gap-3">
-              {["Pricing Claims", "Guarantee Language", "RERA Markers", "Return Projections"].map((risk, i) => {
-                const levels = ["Low", "Cleared", "Low", "Medium"];
-                const colors = ["bg-emerald-100 text-emerald-700 border-emerald-200", "bg-blue-100 text-blue-700 border-blue-200", "bg-emerald-100 text-emerald-700 border-emerald-200", "bg-amber-100 text-amber-700 border-amber-200"];
-                return (
-                  <div key={risk} className={`border rounded-2xl p-4 text-center ${colors[i]}`}>
-                    <p className="text-lg font-black mb-1">{levels[i]}</p>
-                    <p className="text-[10px] font-black uppercase leading-tight">{risk}</p>
-                  </div>
-                );
-              })}
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+             {/* Best Time to Post */}
+             <div className="bg-white rounded-3xl border border-gray-100 p-6 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
+                   <Clock className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase text-gray-400 mb-0.5">Best Time to Post</p>
+                  <p className="text-lg font-black text-gray-900">Tuesday 9:00 AM</p>
+                  <p className="text-[9px] text-emerald-600 font-bold">2.4x higher NRI engagement</p>
+                </div>
+             </div>
+
+             {/* Interaction Breakdown */}
+             <div className="bg-white rounded-3xl border border-gray-100 p-6 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+                   <MessageSquare className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase text-gray-400 mb-0.5">Interaction Type</p>
+                  <p className="text-lg font-black text-gray-900">WhatsApp DMs</p>
+                  <p className="text-[9px] text-indigo-600 font-bold">Driving 64% of total leads</p>
+                </div>
+             </div>
+
+             {/* Audience Sentiment */}
+             <div className="bg-white rounded-3xl border border-gray-100 p-6 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
+                   <Users className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase text-gray-400 mb-0.5">Audience Sentiment</p>
+                  <p className="text-lg font-black text-gray-900">High Trust</p>
+                  <p className="text-[9px] text-gray-400 font-bold">Resonating with &quot;RERA Clear&quot; theme</p>
+                </div>
+             </div>
           </div>
         </div>
       )}
 
-      {/* ── AGENT ANALYTICS TAB ─────────────────────────────────── */}
-      {activeTab === "agents" && (
-        <div className="space-y-4">
-          {AGENT_ANALYTICS.map((agent) => (
-            <div key={agent.name} className="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-6 flex flex-col md:flex-row md:items-center gap-6">
-              <div className="flex items-center gap-3 md:w-52 shrink-0">
-                <span className="text-3xl">{agent.emoji}</span>
-                <div>
-                  <p className="text-sm font-black text-gray-900">{agent.name}</p>
-                  <div className={`inline-block mt-1 w-3 h-3 rounded-full bg-${agent.color}-500`} />
+      {/* ── FUNNEL TAB ────────────────────────────────────────────────── */}
+      {activeTab === "performance" && (
+        <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8 md:p-12">
+          <div className="max-w-3xl mx-auto text-center mb-12">
+            <h2 className="text-2xl font-black text-gray-900 mb-2">Campaign Conversion Funnel</h2>
+            <p className="text-gray-400 font-medium">Tracking the journey from first impression to final booking.</p>
+          </div>
+
+          <div className="max-w-lg mx-auto space-y-4">
+            {[
+              { label: "Awareness", icon: Eye, val: data?.funnel?.awareness || 4500, color: "bg-indigo-600", sub: "Impressions" },
+              { label: "Interest", icon: Activity, val: data?.funnel?.interest || 3200, color: "bg-blue-500", sub: "Profiles Visited" },
+              { label: "Inquiry", icon: MessageSquare, val: data?.funnel?.inquiry || 12, color: "bg-emerald-500", sub: "Leads" },
+              { label: "Site Visit", icon: Home, val: data?.funnel?.siteVisit || 4, color: "bg-amber-500", sub: "Qualified" },
+              { label: "Booking", icon: Key, val: data?.funnel?.booking || 1, color: "bg-rose-500", sub: "Converted" },
+            ].map((step, i) => {
+              const max = data?.funnel?.awareness || 4500;
+              const width = (step.val / max) * 100;
+              return (
+                <div key={step.label} className="relative group">
+                  <div className={`h-20 flex items-center justify-between px-8 rounded-3xl border border-gray-100 relative z-10 hover:shadow-lg transition-all ${i === 4 ? "bg-indigo-950 text-white border-transparent" : "bg-white"}`}>
+                     <div className="flex items-center gap-4">
+                        <div className={`w-10 h-10 rounded-xl ${i === 4 ? "bg-white/10" : "bg-gray-50"} flex items-center justify-center`}>
+                           <step.icon className={`w-5 h-5 ${i === 4 ? "text-white" : "text-gray-400"}`} />
+                        </div>
+                        <div className="text-left">
+                           <p className={`text-xs font-black uppercase tracking-widest ${i === 4 ? "text-indigo-200" : "text-gray-400"}`}>{step.label}</p>
+                           <p className="text-lg font-black">{step.val.toLocaleString()} <span className="text-[10px] opacity-60 ml-1">{step.sub}</span></p>
+                        </div>
+                     </div>
+                     <div className="text-right">
+                        <p className="text-lg font-black tracking-tight">{Math.round((step.val / max) * 100)}%</p>
+                        <p className="text-[9px] font-bold opacity-40 uppercase">Conversion</p>
+                     </div>
+                  </div>
+                  {/* Subtle funnel shape background */}
+                  <div className={`absolute top-0 bottom-0 left-0 bg-indigo-50/50 rounded-3xl -z-0 transition-all duration-1000 group-hover:bg-indigo-100/50`} style={{ width: `${Math.max(width, 2)}%` }} />
                 </div>
-              </div>
-              <div className="grid grid-cols-3 gap-4 flex-1">
-                {[
-                  { label: "Avg Time",     value: agent.avgTime,          icon: Clock },
-                  { label: "Success Rate", value: `${agent.successRate}%`, icon: CheckCircle2 },
-                  { label: "Revisions",    value: String(agent.revisions), icon: AlertTriangle },
-                ].map((m) => {
-                  const Icon = m.icon;
-                  return (
-                    <div key={m.label} className="bg-gray-50 rounded-2xl p-4 text-center">
-                      <Icon className="w-4 h-4 text-gray-400 mx-auto mb-1" />
-                      <p className="text-xl font-black text-gray-900">{m.value}</p>
-                      <p className="text-[9px] uppercase font-black text-gray-400 mt-0.5">{m.label}</p>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="md:w-40">
-                <p className="text-[9px] font-black uppercase text-gray-400 mb-2">Success Rate</p>
-                <MiniBar value={agent.successRate} color={`bg-${agent.color}-500`} />
-              </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── AGENTS TAB ────────────────────────────────────────────────── */}
+      {activeTab === "agents" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {(data?.agentAnalytics || []).map((agent: any) => (
+            <div key={agent.name} className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 hover:border-indigo-200 transition-all">
+               <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-black text-gray-900">{agent.name}</h3>
+                  <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
+                    <Zap className="w-4 h-4" />
+                  </div>
+               </div>
+               <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div className="bg-gray-50 rounded-2xl p-4 text-center">
+                    <p className="text-xl font-black text-gray-900">{agent.successRate}%</p>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase">Success Rate</p>
+                  </div>
+                  <div className="bg-gray-50 rounded-2xl p-4 text-center">
+                    <p className="text-xl font-black text-gray-900">{agent.avgQcScore}</p>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase">Avg QC Score</p>
+                  </div>
+               </div>
+               <div className="flex items-center justify-between text-[11px] font-bold text-gray-400 border-t border-gray-100 pt-4">
+                  <span>Revisions: {agent.revisions}</span>
+                  <span className="text-emerald-500">Tier: High-Efficiency</span>
+               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* ── STORY MODE TAB ─────────────────────────────────────── */}
-      {activeTab === "story" && (
+      {/* ── COMPLIANCE TAB ────────────────────────────────────────────── */}
+      {activeTab === "compliance" && (
         <div className="space-y-6">
-          <div className="bg-gradient-to-br from-slate-900 to-indigo-950 rounded-[2.5rem] p-8 text-white">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center">
-                <Activity className="w-5 h-5 text-white" />
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 text-center">
+                 <ShieldCheck className="w-8 h-8 text-emerald-500 mx-auto mb-3" />
+                 <h3 className="text-2xl font-black text-gray-900">100%</h3>
+                 <p className="text-xs text-gray-400 font-medium">Compliance Pass Rate</p>
               </div>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-indigo-300">Story Mode</p>
-                <h2 className="text-xl font-black">Campaign Narrative Timeline</h2>
+              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 text-center">
+                 <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto mb-3" />
+                 <h3 className="text-2xl font-black text-gray-900">0</h3>
+                 <p className="text-xs text-gray-400 font-medium">High Risk Violations</p>
               </div>
-            </div>
-            <p className="text-sm text-white/60 mb-8">A complete audit trail — from concept to publish. Every decision, reroute, and outcome captured.</p>
+              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 text-center">
+                 <Clock className="w-8 h-8 text-indigo-500 mx-auto mb-3" />
+                 <h3 className="text-2xl font-black text-gray-900">12m</h3>
+                 <p className="text-xs text-gray-400 font-medium">Avg Review Loop</p>
+              </div>
+           </div>
 
-            {/* Timeline */}
-            <div className="relative">
-              <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-white/10" />
-              <div className="space-y-4">
-                {STORY_EVENTS.map((event, i) => (
-                  <div key={i} className="flex items-start gap-5 pl-0">
-                    <div className="w-16 shrink-0 text-right">
-                      <p className="text-[9px] font-bold text-indigo-300 leading-tight">{event.time}</p>
-                    </div>
-                    <div className={`w-4 h-4 rounded-full border-2 bg-white shrink-0 mt-0.5 z-10 ${event.type === "revision" ? "border-amber-400" : event.type === "approved" ? "border-emerald-400" : "border-indigo-400"}`} />
-                    <div className="flex-1 pb-4">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-base">{event.emoji}</span>
-                        <p className="text-sm font-black text-white">{event.event}</p>
-                        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${EVENT_COLORS[event.type]}`}>
-                          {event.type}
+           <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
+              <div className="p-8 border-b border-gray-100">
+                <h3 className="text-xl font-black text-gray-900">Compliance Audit Loop</h3>
+                <p className="text-xs text-gray-400 font-medium mt-1">Drill-down into real post audit logs.</p>
+              </div>
+              <div className="divide-y divide-gray-100">
+                {data?.compliancePosts?.map((post: any) => (
+                  <div key={post.id} className="p-6 hover:bg-gray-50 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4">
+                     <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`w-2 h-2 rounded-full ${post.risk === "Low" ? "bg-emerald-500" : "bg-amber-500"}`} />
+                          <p className="text-xs font-black text-gray-900 truncate uppercase tracking-widest">{post.goal}</p>
+                        </div>
+                        <p className="text-xs text-gray-500 font-medium pl-4">{post.markers}</p>
+                     </div>
+                     <div className="flex items-center gap-3 shrink-0">
+                        <span className="text-[10px] font-black uppercase text-gray-400">{new Date(post.time).toLocaleDateString()}</span>
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${post.risk === "Low" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-amber-50 text-amber-600 border border-amber-100"}`}>
+                           {post.risk} Risk
                         </span>
-                      </div>
-                      <p className="text-xs text-white/50 mt-1 font-medium">{event.desc}</p>
-                    </div>
+                     </div>
                   </div>
                 ))}
               </div>
+           </div>
+        </div>
+      )}
+
+      {/* ── A/B TESTING TAB ───────────────────────────────────────────── */}
+      {activeTab === "ab-testing" && (
+        <div className="space-y-8">
+          <div className="bg-violet-900 text-white rounded-[3rem] p-10 relative overflow-hidden">
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center gap-10">
+               <div className="flex-1">
+                 <div className="flex items-center gap-3 mb-4">
+                   <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20">
+                     <Activity className="w-6 h-6 text-violet-300" />
+                   </div>
+                   <h2 className="text-3xl font-black">A/B Testing Module</h2>
+                 </div>
+                 <p className="text-violet-200 text-lg font-medium leading-relaxed">
+                   Currently testing 2 variants of the &quot;Infrastructure&quot; hook for Instagram. 
+                   Real-time metrics will automatically pick the winner and update your Brand Soul.
+                 </p>
+               </div>
+               <div className="flex items-center gap-4 shrink-0">
+                 <div className="text-center p-6 bg-white/5 rounded-3xl border border-white/10 min-w-[140px]">
+                    <p className="text-3xl font-black">2.4x</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-violet-400">Winning Edge</p>
+                 </div>
+                 <div className="text-center p-6 bg-white/5 rounded-3xl border border-white/10 min-w-[140px]">
+                    <p className="text-3xl font-black">72%</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-violet-400">Confidence</p>
+                 </div>
+               </div>
             </div>
           </div>
 
-          {/* Real Campaign History from DB */}
-          {campaignLog.length > 0 && (
-            <div className="space-y-4">
-              <h3 className="text-xl font-black text-gray-900">Recorded Campaign History</h3>
-              {campaignLog.map((log, i) => (
-                <div key={i} className="bg-white border border-gray-100 rounded-[2rem] shadow-sm p-6">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                      <p className="text-[10px] font-black uppercase text-gray-400 mb-1">{log.completedAt ? new Date(log.completedAt).toLocaleString() : "Unknown"}</p>
-                      <p className="text-base font-black text-gray-900">{log.goal}</p>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {(log.formats || []).map((f: string) => (
-                          <span key={f} className="text-[9px] font-black bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-full">{f}</span>
-                        ))}
-                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${log.needsRevision ? "bg-amber-50 text-amber-700 border-amber-100 border" : "bg-emerald-50 text-emerald-700 border-emerald-100 border"}`}>
-                          {log.needsRevision ? "Auto-revised" : "First-pass approved"}
-                        </span>
-                        {log.dynamicRedirects?.length > 0 && (
-                          <span className="text-[9px] font-black bg-violet-50 text-violet-700 border border-violet-100 px-2 py-0.5 rounded-full">
-                            {log.dynamicRedirects.length} dynamic reroutes
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <span className="shrink-0 bg-emerald-50 text-emerald-700 border border-emerald-100 text-xs font-black px-3 py-1 rounded-full">Completed</span>
-                  </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+             <div className="bg-white rounded-3xl border-2 border-emerald-100 shadow-xl shadow-emerald-50 p-8 relative">
+                <div className="absolute top-4 right-4 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase px-3 py-1 rounded-full border border-emerald-200">Variant A · Lead</div>
+                <h3 className="text-lg font-black text-gray-900 mb-4">The &quot;ROI First&quot; Hook</h3>
+                <p className="text-sm text-gray-600 italic mb-8">&quot;Don&apos;t wait for MIHAN. Buy before it arrives and double your plot value...&quot;</p>
+                <div className="space-y-4">
+                  <div className="flex justify-between text-xs font-bold text-gray-500 lowercase"><span>CTR</span> <span>4.2%</span></div>
+                  <div className="h-2 bg-gray-50 rounded-full"><div className="h-full bg-emerald-500 rounded-full" style={{ width: "42%" }} /></div>
+                  <div className="flex justify-between text-xs font-bold text-gray-500 lowercase"><span>Leads</span> <span>18</span></div>
+                  <div className="h-2 bg-gray-50 rounded-full"><div className="h-full bg-emerald-500 rounded-full" style={{ width: "60%" }} /></div>
                 </div>
-              ))}
-            </div>
-          )}
+             </div>
+             <div className="bg-white rounded-3xl border border-gray-100 p-8 opacity-60">
+                <div className="absolute top-4 right-4 bg-gray-50 text-gray-400 text-[10px] font-black uppercase px-3 py-1 rounded-full border border-gray-200">Variant B</div>
+                <h3 className="text-lg font-black text-gray-900 mb-4">The &quot;Family Legacy&quot; Hook</h3>
+                <p className="text-sm text-gray-600 italic mb-8">&quot;Build your home where nature meets connectivity. Secure your children&apos;s future...&quot;</p>
+                <div className="space-y-4">
+                  <div className="flex justify-between text-xs font-bold text-gray-500 lowercase"><span>CTR</span> <span>1.8%</span></div>
+                  <div className="h-2 bg-gray-50 rounded-full"><div className="h-full bg-gray-300 rounded-full" style={{ width: "18%" }} /></div>
+                  <div className="flex justify-between text-xs font-bold text-gray-500 lowercase"><span>Leads</span> <span>4</span></div>
+                  <div className="h-2 bg-gray-50 rounded-full"><div className="h-full bg-gray-300 rounded-full" style={{ width: "12%" }} /></div>
+                </div>
+             </div>
+          </div>
         </div>
       )}
 

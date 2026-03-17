@@ -23,6 +23,7 @@ import {
   Twitter,
   Facebook,
   MessageCircle,
+  Users,
   Clock,
   TrendingUp,
   AlertCircle,
@@ -32,9 +33,12 @@ import {
   Video,
   MapPin,
   Upload,
+  Smartphone,
+  Bot,
+  Target,
   Eye,
   ToggleLeft,
-  ToggleRight,
+  ToggleRight
 } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
@@ -46,6 +50,8 @@ const PLATFORM_ICONS: Record<string, any> = {
   x: Twitter,
   youtube: Youtube,
   facebook: Facebook,
+  facebook_ads: TrendingUp,
+  google_business: MapPin,
   whatsapp: MessageCircle,
 };
 
@@ -96,6 +102,8 @@ function SettingsContent() {
   const [websites, setWebsites] = useState<any[]>([]);
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
   const [isLoadingWebsites, setIsLoadingWebsites] = useState(false);
+  const [goldenStats, setGoldenStats] = useState<any>(null);
+  const [isRunningGoldenLoop, setIsRunningGoldenLoop] = useState(false);
   
   // New Website form state
   const [newSiteName, setNewSiteName] = useState("");
@@ -215,18 +223,48 @@ function SettingsContent() {
   useEffect(() => {
     if (activeTab === "accounts") fetchAccounts();
     if (activeTab === "websites") fetchWebsites();
+    if (activeTab === "examples") fetchGoldenStats();
   }, [activeTab]);
 
   const fetchAccounts = async () => {
     setIsLoadingAccounts(true);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000); // 8s timeout
+
     try {
-      const res = await fetch("/api/social-accounts");
+      const res = await fetch("/api/social-accounts", { signal: controller.signal });
       const data = await res.json();
       setAccounts(data.accounts || []);
     } catch (e) {
       console.error(e);
+      setAccounts([]); 
     } finally {
+      clearTimeout(timeout);
       setIsLoadingAccounts(false);
+    }
+  };
+
+  const fetchGoldenStats = async () => {
+    try {
+      const res = await fetch("/api/golden-loop/run");
+      const data = await res.json();
+      if (data.success) setGoldenStats(data);
+    } catch {}
+  };
+
+  const runGoldenLoop = async () => {
+    setIsRunningGoldenLoop(true);
+    try {
+      const res = await fetch("/api/golden-loop/run", { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        fetchGoldenStats();
+      }
+    } catch {
+      toast.error("Failed to run golden loop");
+    } finally {
+      setIsRunningGoldenLoop(false);
     }
   };
 
@@ -353,7 +391,9 @@ function SettingsContent() {
     { id: "linkedin", name: "LinkedIn", color: "text-blue-600", bg: "bg-blue-50" },
     { id: "youtube", name: "YouTube", color: "text-red-600", bg: "bg-red-50" },
     { id: "x", name: "X (Twitter)", color: "text-zinc-800", bg: "bg-zinc-100" },
-    { id: "facebook", name: "Facebook Page", color: "text-blue-700", bg: "bg-blue-50" }
+    { id: "facebook", name: "Facebook Page", color: "text-blue-700", bg: "bg-blue-50" },
+    { id: "facebook_ads", name: "Meta Ads Manager", color: "text-blue-600", bg: "bg-blue-50" },
+    { id: "google_business", name: "Google Business Profile", color: "text-emerald-700", bg: "bg-emerald-50" }
   ];
 
 
@@ -411,6 +451,14 @@ function SettingsContent() {
               }`}
             >
               <LinkIcon className="w-5 h-5" /> Website Blocks
+            </button>
+            <button 
+              onClick={() => handleTabChange("integrations")}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                activeTab === "integrations" ? "bg-indigo-50 text-indigo-700 shadow-sm" : "text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              <Zap className="w-5 h-5 text-amber-500" /> CRM & Integrations
             </button>
             <button 
               onClick={() => handleTabChange("examples")}
@@ -910,29 +958,152 @@ function SettingsContent() {
 
           {activeTab === "examples" && (
             <div className="p-8 animate-in fade-in slide-in-from-right-2">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-                    <Star className="w-5 h-5 text-amber-500" />
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white shadow-lg shadow-amber-200">
+                    <Star className="w-7 h-7" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-gray-900">Golden Examples</h2>
-                    <p className="text-sm text-gray-500">Provide top-performing posts so the AI learns your exact style.</p>
+                    <h2 className="text-2xl font-black text-gray-900 tracking-tight">Golden Loop Examples</h2>
+                    <p className="text-sm text-gray-500 font-medium">Outlier posts that the AI uses to mirror your high-engagement style.</p>
                   </div>
                 </div>
+                <button
+                  onClick={runGoldenLoop}
+                  disabled={isRunningGoldenLoop}
+                  className="flex items-center gap-2 px-6 py-3 bg-black text-white font-black text-xs rounded-2xl hover:bg-gray-800 transition-all shadow-xl disabled:opacity-50"
+                >
+                  {isRunningGoldenLoop ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4 fill-amber-400 text-amber-400" />}
+                  Run Winner Detection
+                </button>
               </div>
               
-              <div className="space-y-4">
-                <div className="p-4 border border-gray-200 rounded-xl">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">LinkedIn (High Engagement)</span>
-                  </div>
-                  <p className="text-sm text-gray-700">&quot;They said real estate in Nagpur was dead. I just closed 5 deals in MIHAN this week...&quot;</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                <div className="p-6 bg-white border border-gray-100 rounded-3xl shadow-sm">
+                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Assets</p>
+                   <p className="text-3xl font-black text-gray-900">{goldenStats?.totalGoldenExamples || 0}</p>
                 </div>
+                <div className="p-6 bg-white border border-gray-100 rounded-3xl shadow-sm">
+                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Mirror Injections</p>
+                   <p className="text-3xl font-black text-indigo-600">{goldenStats?.totalTimesInjected || 0}</p>
+                </div>
+                <div className="p-6 bg-white border border-gray-100 rounded-3xl shadow-sm">
+                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Top Platform</p>
+                   <p className="text-3xl font-black text-amber-500 uppercase">{goldenStats?.topPlatform || "None"}</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-sm font-black text-gray-900 mb-4 px-1">Proof of Performance (Recent Winners)</h3>
+                {!goldenStats || goldenStats.recentExamples?.length === 0 ? (
+                  <div className="text-center py-20 bg-gray-50 rounded-[2.5rem] border border-dashed border-gray-200">
+                    <Bot className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-400 font-bold">No golden examples found yet.</p>
+                    <p className="text-xs text-gray-400 mt-1">Connect your accounts and post content to let the AI learn.</p>
+                  </div>
+                ) : (
+                  goldenStats.recentExamples.map((ex: any) => (
+                    <div key={ex.id} className="p-6 bg-white border border-gray-100 rounded-[2rem] shadow-sm hover:border-amber-200 transition-all group">
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="text-[10px] font-black text-amber-600 bg-amber-50 px-3 py-1 rounded-full border border-amber-100 uppercase tracking-widest">
+                          {ex.platform} Winner
+                        </span>
+                        <div className="flex items-center gap-4 text-[10px] font-black text-gray-400">
+                          <span className="flex items-center gap-1"><Zap className="w-3 h-3" /> Score: {ex.engagementScore}</span>
+                          <span className="flex items-center gap-1"><Target className="w-3 h-3" /> Used: {ex.usageCount} times</span>
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-700 leading-relaxed font-medium italic group-hover:text-gray-900 transition-colors">
+                        &quot;{ex.postText.length > 300 ? ex.postText.substring(0, 300) + "..." : ex.postText}&quot;
+                      </p>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}
 
+          {activeTab === "integrations" && (
+            <div className="p-8 animate-in fade-in slide-in-from-right-2">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600 shadow-sm border border-amber-100">
+                  <Zap className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black text-gray-900 tracking-tight">CRM & Lead Integrations</h2>
+                  <p className="text-sm text-gray-500 font-medium">Route your high-quality leads directly to your favorite CRM or via Webhooks.</p>
+                </div>
+              </div>
+
+              <div className="space-y-8">
+                {/* CRM Section */}
+                <div className="bg-gray-50/50 rounded-3xl border border-gray-100 p-6">
+                  <h3 className="text-lg font-black text-gray-900 mb-4 flex items-center gap-2">
+                    <Users className="w-5 h-5 text-indigo-500" />
+                    Connect Your CRM
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {[
+                      { name: "IndiaMART", icon: "🇮🇳" },
+                      { name: "NoBroker", icon: "🏠" },
+                      { name: "Custom CRM", icon: "🛠️" },
+                    ].map((crm) => (
+                      <button key={crm.name} className="flex flex-col items-center justify-center p-6 bg-white border border-gray-100 rounded-2xl hover:border-indigo-300 hover:shadow-lg transition-all group">
+                        <span className="text-3xl mb-2 group-hover:scale-110 transition-transform">{crm.icon}</span>
+                        <span className="text-sm font-black text-gray-700">{crm.name}</span>
+                        <span className="text-[10px] font-bold text-gray-400 mt-1 uppercase">Connect</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Webhooks Section */}
+                <div className="bg-gray-50/50 rounded-3xl border border-gray-100 p-6">
+                  <h3 className="text-lg font-black text-gray-900 mb-4 flex items-center gap-2">
+                    <LinkIcon className="w-5 h-5 text-indigo-500" />
+                    Webhooks & Zapier
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="bg-white p-5 rounded-2xl border border-gray-100">
+                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Zapier Webhook URL</label>
+                      <div className="flex gap-2">
+                        <input type="text" placeholder="https://hooks.zapier.com/hooks/catch/..." className="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                        <button className="px-6 py-2 bg-indigo-600 text-white font-black text-xs rounded-xl hover:bg-indigo-700 transition-colors">Save</button>
+                      </div>
+                      <p className="text-[10px] text-gray-400 mt-2 font-medium">Leads from Plot Estimator and WhatsApp will be sent here in real-time.</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Automation Rules */}
+                <div className="bg-indigo-900 text-white rounded-[2.5rem] p-8 relative overflow-hidden">
+                   <div className="absolute right-0 top-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+                   <h3 className="text-xl font-black mb-2 flex items-center gap-2 relative z-10">
+                     <Shield className="w-5 h-5 text-indigo-300" />
+                     Lead Intelligence Bridge
+                   </h3>
+                   <p className="text-indigo-200 text-xs font-medium mb-6 relative z-10">Define how the AI should score and route incoming leads based on their content interaction.</p>
+                   
+                   <div className="space-y-3 relative z-10">
+                     <label className="flex items-center gap-3 p-4 bg-white/5 border border-white/10 rounded-2xl cursor-pointer hover:bg-white/10 transition-colors">
+                        <input type="checkbox" className="w-4 h-4 rounded border-indigo-400 bg-transparent" />
+                        <div>
+                          <p className="text-sm font-bold">Auto-Score Leads</p>
+                          <p className="text-[10px] text-indigo-300">Score lead quality (1-10) based on which property plot they enquired about.</p>
+                        </div>
+                     </label>
+                     <label className="flex items-center gap-3 p-4 bg-white/5 border border-white/10 rounded-2xl cursor-pointer hover:bg-white/10 transition-colors">
+                        <input type="checkbox" className="w-4 h-4 rounded border-indigo-400 bg-transparent" />
+                        <div>
+                          <p className="text-sm font-bold">Notify on WhatsApp</p>
+                          <p className="text-[10px] text-indigo-300">Send me a direct WhatsApp alert when a high-intent lead is captured.</p>
+                        </div>
+                     </label>
+                   </div>
+                </div>
+              </div>
+            </div>
+          )}
           {activeTab === "profile" && (
             <div className="p-8 animate-in fade-in slide-in-from-right-2">
               <div className="flex items-center gap-3 mb-8">

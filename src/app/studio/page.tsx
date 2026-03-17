@@ -52,6 +52,27 @@ type AgentTask = {
   createdAt: string;
 };
 
+const BUYING_PATTERNS = [
+  { id: "roi", label: "ROI/Investment", icon: "📈", desc: "Focus on capital appreciation and rental yield." },
+  { id: "emi", label: "EMI/Security", icon: "🛡️", desc: "Focus on monthly affordability and family safety." },
+  { id: "fomo", label: "FOMO/Urgency", icon: "🔥", desc: "Focus on limited stock and price hike alerts." },
+  { id: "legacy", label: "Legacy/Pride", icon: "🏆", desc: "Focus on premium status and luxury lifestyle." },
+];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function stripMarkdown(text: string): string {
+  if (!text) return "";
+  return text
+    .replace(/\*\*(.*?)\*\*/g, "$1")   // **bold**
+    .replace(/\*(.*?)\*/g, "$1")       // *italic*
+    .replace(/__(.*?)__/g, "$1")       // __bold__
+    .replace(/_(.*?)_/g, "$1")         // _italic_
+    .replace(/#+\s?/g, "")             // # headings
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // [link](url)
+    .replace(/`([^`]+)`/g, "$1")       // `code`
+    .trim();
+}
+
 // ── Campaign Brief Templates ─────────────────────────────────────────────────
 const BRIEF_TEMPLATES = [
   {
@@ -119,6 +140,9 @@ export default function AgenticOrchestrator() {
   const [isStartingRun, setIsStartingRun] = useState(false);
   const [proactiveSuggestion, setProactiveSuggestion] = useState("");
   const [campaignLog, setCampaignLog] = useState<any[]>([]);
+  const [selectedPattern, setSelectedPattern] = useState("roi");
+  const [trendingBriefing, setTrendingBriefing] = useState<any[]>([]);
+  const [isLoadingTrends, setIsLoadingTrends] = useState(false);
 
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
@@ -150,7 +174,19 @@ export default function AgenticOrchestrator() {
       }
     };
 
+    const fetchTrends = async () => {
+      setIsLoadingTrends(true);
+      try {
+        const res = await fetch("/api/trending");
+        if (res.ok) {
+          const data = await res.json();
+          setTrendingBriefing(data.topics || []);
+        }
+      } catch {} finally { setIsLoadingTrends(false); }
+    };
+
     fetchData();
+    fetchTrends();
     pollingInterval = setInterval(fetchData, 3000);
     return () => clearInterval(pollingInterval);
   }, []);
@@ -216,6 +252,23 @@ export default function AgenticOrchestrator() {
   };
 
   // ── Launch Campaign ────────────────────────────────────────────────
+  const handleApprove = async (taskId: string, platform: string, content: string) => {
+    try {
+      const res = await fetch("/api/studio/tasks/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskId, platform, content })
+      });
+      if (res.ok) {
+        toast.success("Scheduled! Checked your Marketing Calendar. 📅");
+      } else {
+        toast.error("Failed to approve content.");
+      }
+    } catch {
+      toast.error("Error approving content.");
+    }
+  };
+
   const startAutonomousJob = async () => {
     if (!newRunGoal.trim()) {
       toast.error("Write your campaign goal first.");
@@ -226,7 +279,10 @@ export default function AgenticOrchestrator() {
       const res = await fetch("/api/studio/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ goal: newRunGoal }),
+        body: JSON.stringify({ 
+          goal: newRunGoal,
+          pattern: selectedPattern 
+        }),
       });
       if (res.ok) {
         toast.success("🚀 Campaign launched! Your agent team is at work…");
@@ -370,9 +426,32 @@ export default function AgenticOrchestrator() {
                   className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 font-medium resize-none h-32 transition-all"
                 />
 
-                <div className="flex items-center justify-between mt-4 gap-3">
+                <div className="mt-6">
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">
+                    Human Buying Pattern (Psychological Trigger)
+                  </label>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {BUYING_PATTERNS.map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => setSelectedPattern(p.id)}
+                        className={`flex flex-col items-start gap-1 p-3 rounded-2xl border-2 transition-all ${
+                          selectedPattern === p.id 
+                            ? "border-indigo-600 bg-indigo-50 shadow-inner" 
+                            : "border-gray-50 bg-gray-50/50 hover:border-gray-200"
+                        }`}
+                      >
+                        <span className="text-xl">{p.icon}</span>
+                        <p className={`text-[11px] font-black ${selectedPattern === p.id ? "text-indigo-700" : "text-gray-700"}`}>{p.label}</p>
+                        <p className="text-[9px] text-gray-400 font-medium leading-tight">{p.desc}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between mt-6 gap-3 pt-6 border-t border-gray-100">
                   <p className="text-xs text-gray-400 font-medium">
-                    💡 Be specific about platform, audience, tone, and language for best results.
+                    💡 The AI team will adapt the hooks and emotional triggers based on your selection.
                   </p>
                   <button
                     onClick={startAutonomousJob}
@@ -472,7 +551,7 @@ export default function AgenticOrchestrator() {
                         </div>
                         <div>
                           <h4 className="font-black text-gray-900 text-sm leading-tight">
-                            {task.goal.length > 80 ? task.goal.substring(0, 80) + "…" : task.goal}
+                            {stripMarkdown(task.goal).length > 80 ? stripMarkdown(task.goal).substring(0, 80) + "…" : stripMarkdown(task.goal)}
                           </h4>
                           <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">
                             {task.source === "whatsapp" ? "📱 WhatsApp" : "💻 Web"} ·{" "}
@@ -599,7 +678,7 @@ export default function AgenticOrchestrator() {
                                     </span>
                                     <div className="flex items-center gap-2">
                                       <button 
-                                        onClick={() => toast.success("Scheduled! Checked your Marketing Calendar.")}
+                                        onClick={() => handleApprove(task.id, c.platform, c.text)}
                                         className="text-[10px] font-black uppercase bg-white border border-emerald-200 text-emerald-700 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition-colors flex items-center gap-1 shadow-sm"
                                       >
                                         <Clock className="w-3 h-3" /> Approve & Schedule
@@ -681,7 +760,36 @@ export default function AgenticOrchestrator() {
         {/* ── RIGHT SIDEBAR ────────────────────────────────────────── */}
         <div className="flex flex-col gap-4">
 
-          {/* ── Brand Memory Panel ─────────────── */}
+          {/* ── Market Briefing Card ───────────── */}
+          <div className="bg-gradient-to-br from-slate-900 to-indigo-950 rounded-[2.5rem] p-6 text-white border border-indigo-800 shadow-xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500 rounded-full blur-[80px] opacity-20 -mr-16 -mt-16 pointer-events-none" />
+            
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingUp className="w-4 h-4 text-indigo-300" />
+              <h3 className="text-sm font-black uppercase tracking-widest text-indigo-100">Nagpur Intelligence</h3>
+            </div>
+
+            {isLoadingTrends ? (
+               <div className="flex items-center justify-center py-8">
+                 <Loader2 className="w-5 h-5 text-indigo-300 animate-spin" />
+               </div>
+            ) : trendingBriefing.length > 0 ? (
+               <div className="space-y-4">
+                 {trendingBriefing.slice(0, 2).map((trend, i) => (
+                    <div key={i} className="group cursor-help">
+                      <p className="text-[10px] font-black text-indigo-400 uppercase mb-1">{trend.platform} TREND</p>
+                      <p className="text-xs font-bold text-white group-hover:text-indigo-300 transition-colors leading-snug">{trend.title}</p>
+                      <p className="text-[10px] text-gray-400 mt-1 line-clamp-1">{trend.angle}</p>
+                    </div>
+                 ))}
+                 <button className="w-full mt-2 py-2.5 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all">
+                    View Full Briefing →
+                 </button>
+               </div>
+            ) : (
+               <p className="text-[10px] text-indigo-300/60 font-medium">Scanning local corridors for market signals...</p>
+            )}
+          </div>
           <div
             className={`bg-white border-2 rounded-[2.5rem] shadow-sm overflow-hidden transition-all duration-500 ${
               memoryFlash ? "border-green-400 shadow-green-100 shadow-lg" : "border-gray-100"

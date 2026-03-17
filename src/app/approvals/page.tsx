@@ -149,15 +149,33 @@ export default function ApprovalsPage() {
     setProcessingId(id);
     const feedback = feedbackText[id] || "";
 
-    // POST feedback to GravityClaw learning loop
-    if (feedback && (action === "approve_with_suggestion" || action === "approve_suggest_tone")) {
-      await fetch("/api/studio/chat", {
+    // POST feedback and PERSIST the approved content
+    const [tId, cId] = String(id).split("_");
+    
+    try {
+      await fetch("/api/studio/tasks/approve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: `From now on, remember this feedback about content quality preference: "${feedback}". Apply this to all future content from the Copywriter.`,
+          taskId: tId,
+          contentId: cId || id,
+          editedText: editedContent[id],
+          action: action
         }),
-      }).catch(() => {});
+      });
+
+      if (feedback && (action === "approve_with_suggestion" || action === "approve_suggest_tone")) {
+        await fetch("/api/studio/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: `From now on, remember this feedback about content quality preference: "${feedback}". Apply this to all future content from the Copywriter.`,
+          }),
+        }).catch(() => {});
+      }
+    } catch (err) {
+      console.error("Approval failed:", err);
+      toast.error("Failed to sync approval to database.");
     }
 
     setItems((prev) => prev.filter((i) => i.id !== id));

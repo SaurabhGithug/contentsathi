@@ -68,11 +68,11 @@ const navGroups = [
 import { BrainCircuit } from "lucide-react";
 
 const PLATFORM_ICONS: Record<string, any> = {
-  instagram: Instagram,
-  linkedin:  Linkedin,
-  youtube:   Youtube,
-  x:         Zap, // using Zap as X placeholder if X icon missing
-  whatsapp:  MessageCircle,
+  instagram: { icon: Instagram, label: "Instagram" },
+  linkedin:  { icon: Linkedin, label: "LinkedIn" },
+  youtube:   { icon: Youtube, label: "YouTube" },
+  x:         { icon: Zap, label: "X (Twitter)" },
+  whatsapp:  { icon: MessageCircle, label: "WhatsApp" },
 };
 
 export function Sidebar() {
@@ -185,60 +185,28 @@ export function Sidebar() {
             Connected Channels
           </p>
           <Tooltip.Provider delayDuration={300}>
-            <div className="flex flex-wrap gap-2">
+            <div className="space-y-2">
               {Object.keys(PLATFORM_ICONS).map((p) => {
-                const Icon = PLATFORM_ICONS[p];
+                const { icon: Icon, label } = PLATFORM_ICONS[p];
                 const isConnected = connectedPlatforms.includes(p);
-                const platformName = p.charAt(0).toUpperCase() + p.slice(1);
-
-                const buttonContent = (
-                  <button
-                    className={cn(
-                      "w-8 h-8 rounded-lg flex items-center justify-center transition-all",
-                      isConnected
-                        ? "bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm"
-                        : "bg-gray-50 text-gray-400 border border-gray-100 opacity-60 hover:opacity-100"
-                    )}
-                  >
-                    <Icon className="w-4 h-4" />
-                  </button>
-                );
 
                 return (
-                  <Tooltip.Root key={p}>
-                    <Tooltip.Trigger asChild>
-                      {isConnected ? (
-                        <Popover.Root>
-                          <Popover.Trigger asChild>
-                            {buttonContent}
-                          </Popover.Trigger>
-                          <Popover.Portal>
-                            <Popover.Content sideOffset={5} className="bg-white rounded-xl shadow-lg border border-gray-100 p-3 z-50 text-sm w-48 transition-all">
-                              <p className="font-semibold text-gray-900 mb-1">{platformName}</p>
-                              <p className="text-gray-500 text-xs mb-3">Currently connected</p>
-                              <Link href="/settings">
-                                <button className="w-full bg-red-50 text-red-600 font-medium py-1.5 rounded-lg text-xs hover:bg-red-100">
-                                  Manage / Disconnect
-                                </button>
-                              </Link>
-                              <Popover.Arrow className="fill-white" />
-                            </Popover.Content>
-                          </Popover.Portal>
-                        </Popover.Root>
-                      ) : (
-                        <Link href="/settings" className="block">
-                          {buttonContent}
-                        </Link>
-                      )}
-                    </Tooltip.Trigger>
-                    {/* Only show tooltip on hover. If Popover opens, it naturally handles focus too */}
-                    <Tooltip.Portal>
-                      <Tooltip.Content sideOffset={5} className="bg-gray-900 text-white text-xs px-2 py-1 rounded shadow-sm z-50">
-                        {platformName} — {isConnected ? "Connected" : "Click to connect"}
-                        <Tooltip.Arrow className="fill-gray-900" />
-                      </Tooltip.Content>
-                    </Tooltip.Portal>
-                  </Tooltip.Root>
+                  <Link 
+                    key={p} 
+                    href="/settings?tab=accounts"
+                    className={cn(
+                      "flex items-center gap-2.5 px-3 py-1.5 rounded-xl transition-all border",
+                      isConnected 
+                        ? "bg-emerald-50/50 border-emerald-100 text-emerald-700" 
+                        : "bg-gray-50/50 border-gray-100 text-gray-400 opacity-60 hover:opacity-100"
+                    )}
+                  >
+                    <Icon className={cn("w-4 h-4", isConnected ? "text-emerald-600" : "text-gray-400")} />
+                    <span className="text-[11px] font-black uppercase tracking-wider">{label}</span>
+                    {isConnected && (
+                      <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                    )}
+                  </Link>
                 );
               })}
             </div>
