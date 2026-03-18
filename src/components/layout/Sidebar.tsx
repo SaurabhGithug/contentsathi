@@ -48,18 +48,18 @@ const navGroups = [
       { name: "Chief AI Officer",       href: "/cao",                icon: Shield },
       { name: "Research · Hunter Mode", href: "/market-watch",       icon: TrendingUp },
       { name: "Buyer Intelligence",     href: "/intelligence",       icon: Star, badge: "NEW" },
-      { name: "2026 Industry Report",   href: "/report",             icon: FileText },  
+      { name: "2026 Industry Report",   href: "/report",             icon: FileText, badge: "SOON" },  
     ]
   },
   {
     title: "MANAGE",
     items: [
       { name: "Dashboard",              href: "/dashboard",          icon: LayoutDashboard },
-      { name: "Agent Team",             href: "/agents",             icon: Users },
+      { name: "Agent Team",             href: "/agents",             icon: Users, badge: "SOON" },
       { name: "Approvals & QC",         href: "/approvals",          icon: BookOpen },
       { name: "Leads & Conversion",     href: "/leads",              icon: Users, badge: "LIVE" },
       { name: "Analytics",              href: "/analytics",          icon: Activity },
-      { name: "Account Audit",          href: "/account-audit",      icon: SearchCheck },
+      { name: "Account Audit",          href: "/account-audit",      icon: SearchCheck, badge: "SOON" },
     ]
   },
   {
@@ -138,7 +138,12 @@ export function Sidebar() {
                     />
                     {item.name}
                     {item.badge && (
-                      <span className="ml-auto text-[9px] font-black bg-purple-500 text-white px-1.5 py-0.5 rounded-full">
+                      <span className={cn(
+                        "ml-auto text-[9px] font-black px-1.5 py-0.5 rounded-full",
+                        item.badge === "SOON" ? "bg-amber-100 text-amber-700" :
+                        item.badge === "LIVE" ? "bg-emerald-100 text-emerald-700" :
+                        "bg-purple-500 text-white"
+                      )}>
                         {item.badge}
                       </span>
                     )}

@@ -1,10 +1,15 @@
 import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import type { NextAuthOptions } from "next-auth";
 
 export const authOptions: NextAuthOptions = {
   providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID || "",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+    }),
     CredentialsProvider({
       name: "credentials",
       credentials: {
@@ -59,6 +64,32 @@ export const authOptions: NextAuthOptions = {
   },
 
   callbacks: {
+    async signIn({ user, account }: any) {
+      if (account?.provider === "google") {
+        if (!user.email) return false;
+        const email = user.email.toLowerCase();
+        
+        let existingUser = await prisma.user.findUnique({
+          where: { email },
+        });
+
+        if (!existingUser) {
+          // Auto-create user on First Google Sign In
+          existingUser = await prisma.user.create({
+            data: {
+              email: email,
+              name: user.name,
+              avatarUrl: user.image,
+              passwordHash: "", // Not used for OAuth
+            },
+          });
+        }
+        
+        // Pass db user ID to the JWT token
+        user.id = existingUser.id;
+      }
+      return true;
+    },
     async jwt({ token, user }: any) {
       // On first sign-in, attach user ID to JWT token
       if (user) {
