@@ -390,7 +390,7 @@ export default function AgenticOrchestrator() {
         <div className="lg:col-span-2 flex flex-col gap-6">
 
           {/* ── Step Tabs ── */}
-          <div className="flex bg-gray-100 p-1.5 rounded-2xl gap-1">
+          <div className="flex flex-col sm:flex-row bg-gray-100 p-1.5 rounded-2xl gap-1">
             {[
               { id: "brief", label: "① Brief Your Team", icon: Lightbulb },
               { id: "running", label: `② Live Tasks (${activeTasks.length})`, icon: Play },
@@ -557,14 +557,14 @@ export default function AgenticOrchestrator() {
                   </p>
                 </div>
 
-                <div className="flex items-center justify-between mt-6 gap-3 pt-6 border-t border-gray-100">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mt-6 gap-4 pt-6 border-t border-gray-100">
                   <p className="text-xs text-gray-400 font-medium">
                     💡 The AI team will adapt the hooks and emotional triggers based on your selection.
                   </p>
                   <button
                     onClick={startAutonomousJob}
                     disabled={isStartingRun || !newRunGoal.trim()}
-                    className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl px-6 py-3 font-bold text-sm transition-all shadow-md shadow-indigo-200 disabled:opacity-50 shrink-0"
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl px-6 py-3 font-bold text-sm transition-all shadow-md shadow-indigo-200 disabled:opacity-50 shrink-0"
                   >
                     {isStartingRun ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -682,7 +682,7 @@ export default function AgenticOrchestrator() {
                                  ? stripMarkdown(cleaned).substring(0, 80) + "…" 
                                  : stripMarkdown(cleaned);
                              })()}
-                             <span className="absolute z-50 invisible group-hover:visible bg-slate-900 text-white p-3 rounded-xl w-64 -left-2 top-full mt-2 text-[10px] font-medium shadow-2xl border border-white/10 leading-relaxed pointer-events-none">
+                             <span className="hidden md:block absolute z-50 invisible group-hover:visible bg-slate-900 text-white p-3 rounded-xl w-64 -left-2 top-full mt-2 text-[10px] font-medium shadow-2xl border border-white/10 leading-relaxed pointer-events-none">
                                <span className="block font-black text-indigo-400 mb-2 border-b border-white/10 pb-1">Full Brief Input:</span>
                                {task.goal}
                               </span>

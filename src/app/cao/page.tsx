@@ -167,7 +167,7 @@ export default function CAODashboard() {
       </div>
 
       <Tabs.Root defaultValue="studio" className="flex flex-col gap-6">
-        <Tabs.List className="flex items-center gap-2 border-b border-gray-200 pb-px">
+        <Tabs.List className="flex items-center gap-2 border-b border-gray-200 pb-px overflow-x-auto custom-scrollbar">
            <Tabs.Trigger value="studio" className="px-5 py-3 text-sm font-bold text-gray-500 data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 transition-all flex items-center gap-2 outline-none">
               <Bot className="w-4 h-4" /> HQ Studio
            </Tabs.Trigger>
