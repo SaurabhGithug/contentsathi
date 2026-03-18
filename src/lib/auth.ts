@@ -7,8 +7,8 @@ import type { NextAuthOptions } from "next-auth";
 export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+      clientId: (process.env.GOOGLE_CLIENT_ID || "").trim(),
+      clientSecret: (process.env.GOOGLE_CLIENT_SECRET || "").trim(),
     }),
     CredentialsProvider({
       name: "credentials",
