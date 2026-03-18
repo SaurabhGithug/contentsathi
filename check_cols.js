@@ -1,0 +1,38 @@
+const { Pool } = require('pg');
+require('dotenv').config();
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
+
+async function main() {
+  try {
+    const res = await pool.query(`
+      SELECT column_name, data_type 
+      FROM information_schema.columns 
+      WHERE table_name = 'users'
+    `);
+    console.log("Columns in 'users' table:");
+    res.rows.forEach(row => {
+      console.log(`- ${row.column_name} (${row.data_type})`);
+    });
+
+    const res2 = await pool.query(`
+      SELECT column_name, data_type 
+      FROM information_schema.columns 
+      WHERE table_name = 'content_brains'
+    `);
+    console.log("\nColumns in 'content_brains' table:");
+    res2.rows.forEach(row => {
+      console.log(`- ${row.column_name} (${row.data_type})`);
+    });
+
+  } catch (err) {
+    console.error(err);
+  } finally {
+    await pool.end();
+  }
+}
+
+main();

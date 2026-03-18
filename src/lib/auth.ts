@@ -102,12 +102,17 @@ export const authOptions: NextAuthOptions = {
             token.id = dbUser.id;
             token.email = dbUser.email;
             token.name = dbUser.name;
+            token.isAdmin = dbUser.isAdmin;
+            token.adminRole = dbUser.adminRole;
           }
         } else {
-          // Normal email/password login
+          // Normal email/password login — look up admin status
+          const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
           token.id = user.id;
           token.email = user.email;
           token.name = user.name;
+          token.isAdmin = dbUser?.isAdmin || false;
+          token.adminRole = dbUser?.adminRole || null;
         }
       }
       return token;
@@ -116,6 +121,8 @@ export const authOptions: NextAuthOptions = {
       // Propagate JWT fields to session object used by the app
       if (token?.id && session.user) {
         (session.user as any).id = token.id;
+        (session.user as any).isAdmin = token.isAdmin || false;
+        (session.user as any).adminRole = token.adminRole || null;
       }
       if (token?.email && session.user) {
         session.user.email = token.email;

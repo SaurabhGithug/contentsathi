@@ -12,6 +12,23 @@ const resend = process.env.RESEND_API_KEY
   : null;
 
 /**
+ * Generic email sender for admin alerts and custom notifications.
+ */
+export async function sendEmail({ to, subject, html }: { to: string; subject: string; html: string }) {
+  if (!resend) {
+    console.log(`[EMAIL_MOCK] To: ${to} | Subject: ${subject}`);
+    return { success: true, mocked: true };
+  }
+  try {
+    await resend.emails.send({ from: 'ContentSathi <noreply@contentsathi.in>', to, subject, html });
+    return { success: true };
+  } catch (err) {
+    console.error('[EMAIL_ERROR]:', err);
+    return { success: false, error: err };
+  }
+}
+
+/**
  * Send a "Forgot Password" email with a recovery link.
  */
 export async function sendPasswordResetEmail(email: string, resetUrl: string) {

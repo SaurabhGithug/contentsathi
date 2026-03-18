@@ -30,6 +30,7 @@ model User {
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
   isAdmin              Boolean              @default(false)
+  adminRole            String?              // super_admin | sales_admin | technical_admin | support_admin
   abTests              ABTest[]
   agentTasks           AgentTask[]
   apiKeys              ApiKey[]
@@ -637,17 +638,20 @@ model PlotComparable {
 model Lead {
   id             String         @id @default(cuid())
   userId         String
-  source         String
+  source         String         // contact_form | whatsapp | landing_page | pricing_page | manual
+  contactSource  String?        // general | sales_pricing | technical | api_access | partnership | billing
   name           String
   phone          String?
   email          String?
-  status         String
+  status         String         @default("new") // new | contacted | converted | closed
   budget         Float?
   location       String?
   corridorNotes  String?
+  message        String?        // contact form message (max 300 chars)
   campaignId     String?
   assetId        String?
-  notes          String?
+  notes          String?        // admin internal notes
+  assignedTo     String?        // admin userId who owns this lead
   lastContactAt  DateTime?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
@@ -660,6 +664,8 @@ model Lead {
 
   @@index([userId, status])
   @@index([userId, source])
+  @@index([contactSource])
+  @@index([assignedTo])
   @@map("leads")
 }
 

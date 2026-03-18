@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, ChevronDown, LogOut, Menu, Settings, User, UserCircle, Check, Info, AlertTriangle } from "lucide-react";
+import { Bell, ChevronDown, LogOut, Menu, Settings, Shield, User, UserCircle, Check, Info, AlertTriangle } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession, signOut } from "next-auth/react";
@@ -61,8 +61,10 @@ export function Header() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const userName = session?.user?.name || "Saurabh";
-  const userRole = (session?.user as any)?.role || "Real Estate";
+  const userName = session?.user?.name || session?.user?.email?.split("@")[0] || "User";
+  const adminRole = (session?.user as any)?.adminRole;
+  const isAdmin = (session?.user as any)?.isAdmin;
+  const userRole = isAdmin ? (adminRole?.replace("_", " ") || "Super Admin").toUpperCase() : "Real Estate Pro";
 
   return (
     <header className="h-16 px-6 bg-white/80 backdrop-blur-xl border-b border-gray-100 flex items-center justify-between sticky top-0 z-30">
@@ -199,7 +201,17 @@ export function Header() {
                 </div>
 
                 <div className="p-1">
-                  <Link 
+                  {isAdmin && (
+                    <Link
+                      href="/admin"
+                      onClick={() => setIsDropdownOpen(false)}
+                      className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-500 hover:bg-red-50/50 hover:text-red-700 rounded-lg transition-colors group mb-1"
+                    >
+                      <Shield className="w-4 h-4 text-red-400 group-hover:text-red-600" />
+                      Admin Panel
+                    </Link>
+                  )}
+                  <Link
                     href="/settings?tab=profile"
                     onClick={() => setIsDropdownOpen(false)}
                     className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-lg transition-colors group"
@@ -207,7 +219,7 @@ export function Header() {
                     <User className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
                     Profile Settings
                   </Link>
-                  <Link 
+                  <Link
                     href="/settings?tab=accounts"
                     onClick={() => setIsDropdownOpen(false)}
                     className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-lg transition-colors group"

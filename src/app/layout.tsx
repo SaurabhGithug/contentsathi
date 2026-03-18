@@ -46,6 +46,7 @@ export const metadata: Metadata = {
 };
 
 import { Toaster } from 'react-hot-toast';
+import { AdminBar } from '@/components/layout/AdminBar';
 
 export default function RootLayout({
   children,
@@ -56,6 +57,7 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${devanagari.variable}`}>
       <body className={inter.className}>
         <Providers>
+          <AdminBar />
           <AppLayout>{children}</AppLayout>
         </Providers>
         <Toaster position="top-right" />

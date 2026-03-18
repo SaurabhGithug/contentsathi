@@ -21,6 +21,8 @@ const PROTECTED_ROUTES = [
   "/pricing",
 ];
 
+const ADMIN_ROUTES = ["/admin"];
+
 // Cookie name differs between environments
 const COOKIE_NAME =
   process.env.NODE_ENV === "production"
@@ -35,11 +37,12 @@ export async function middleware(request: NextRequest) {
 
   // Only call getToken when we actually need it (authenticated routes)
   const needsAuth = PROTECTED_ROUTES.some((route) => pathname.startsWith(route));
+  const needsAdmin = ADMIN_ROUTES.some((route) => pathname.startsWith(route));
   const category = detectRouteCategory(pathname);
   const needsTokenForRateLimit =
     category === "generate" || category === "publish" || category === "payments";
 
-  if (needsAuth || needsTokenForRateLimit) {
+  if (needsAuth || needsAdmin || needsTokenForRateLimit) {
     token = await getToken({
       req: request,
       secret: process.env.NEXTAUTH_SECRET,
@@ -71,10 +74,19 @@ export async function middleware(request: NextRequest) {
   // ── 3. Route Protection ──────────────────────────────────────────────────
   if (needsAuth) {
     if (!token) {
-      // Preserve the intended destination for post-login redirect
       const loginUrl = new URL("/auth/login", request.url);
       loginUrl.searchParams.set("callbackUrl", encodeURIComponent(pathname));
       return NextResponse.redirect(loginUrl);
+    }
+  }
+
+  // ── 4. Admin Route Protection ────────────────────────────────────────────
+  if (needsAdmin) {
+    if (!token) {
+      return NextResponse.redirect(new URL("/auth/login", request.url));
+    }
+    if (!token.isAdmin) {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
     }
   }
 
