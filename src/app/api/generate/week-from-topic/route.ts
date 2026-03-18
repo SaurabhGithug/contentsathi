@@ -7,6 +7,7 @@ import { authOptions } from "@/lib/auth";
 import { sanitizeText } from "@/lib/sanitize";
 import { rateLimit, RATE_LIMITS, rateLimitResponse } from "@/lib/rate-limiter";
 import { transcreateWithSarvam, isSarvamSupported } from "@/lib/sarvam";
+import { performQualityCheck } from "@/lib/quality";
 
 export async function POST(req: Request) {
   try {
@@ -147,6 +148,10 @@ export async function POST(req: Request) {
             else if (platform.includes("website")) platform = "website";
             else platform = "instagram";
             const lang = (post.language || primaryLanguage || "english").toLowerCase() as any;
+            
+            // ── Run Quality Check ───────────────────────────────────────
+            const quality = performQualityCheck(post.body, lang);
+            
             const saved = await prisma.generatedAsset.create({
               data: {
                 userId: dbUserId!,
@@ -159,7 +164,8 @@ export async function POST(req: Request) {
                 cta: post.cta || null,
                 notes: post.notes || null,
                 imagePrompt: post.imagePrompt || null,
-                qualityScore: post.qualityScore || null,
+                qualityScore: quality.score,
+                qualityIssues: quality.issues as any,
               },
             });
             // Attach DB id back so client can reference it

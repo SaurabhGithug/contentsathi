@@ -29,20 +29,39 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { goal, context } = await req.json();
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    let user = await prisma.user.findFirst({
-      orderBy: { updatedAt: "desc" },
-      include: { contentBrain: true },
+    console.log("[TASKS_POST] Session email:", session.user.email);
+    const { goal, context, deepResearchPlatforms } = await req.json();
+    console.log("[TASKS_POST] Body parsed:", { goal, hasContext: !!context, deepResearchPlatforms });
+
+    // FIRST QUERY RECOVERY TEST: Minimal query
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+    }).catch(err => {
+      console.error("[TASKS_POST] Minimal findUnique failed:", err);
+      throw err;
     });
 
-    if (!user) return NextResponse.json({ error: "User required" }, { status: 400 });
+    if (!user) {
+      console.warn("[TASKS_POST] User not found for email:", session.user.email);
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+    
+    // SECOND QUERY: Explicitly get brain if needed
+    const brain = await prisma.contentBrain.findFirst({
+       where: { userId: user.id }
+    });
+    console.log("[TASKS_POST] User & Brain found:", { userId: user.id, hasBrain: !!brain });
 
     const newBgTask = await prisma.agentTask.create({
       data: {
         userId: user.id,
         goal,
-        inputContext: context || null,
+        inputContext: context ? { ...context, deepResearchPlatforms } : { deepResearchPlatforms },
         source: "web",
         status: "processing",
         progress: 0,
@@ -56,6 +75,13 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, taskId: newBgTask.id });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error("[STUDIO_TASKS_POST_ERROR]", err);
+    // Explicitly handle Prisma errors to see if they match the browser report
+    return NextResponse.json({ 
+      error: err.message, 
+      code: err.code,
+      meta: err.meta,
+      clientVersion: err.clientVersion 
+    }, { status: 500 });
   }
 }

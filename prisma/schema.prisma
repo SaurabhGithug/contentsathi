@@ -30,6 +30,7 @@ model User {
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
   isAdmin              Boolean              @default(false)
+  abTests              ABTest[]
   agentTasks           AgentTask[]
   apiKeys              ApiKey[]
   calendarItems        CalendarItem[]
@@ -37,6 +38,7 @@ model User {
   contentSuggestions   ContentSuggestion[]
   generatedAssets      GeneratedAsset[]
   goldenExamplesLoop   GoldenExample[]
+  leads                Lead[]
   marketIntelligence   MarketIntelligence[]
   plotComparables      PlotComparable[]
   postAnalytics        PostAnalytics[]
@@ -49,8 +51,6 @@ model User {
   websiteConnections   WebsiteConnection[]
   weeklyInsights       WeeklyInsight[]
   whatsappSequences    WhatsAppSequence[]
-  leads                Lead[]
-  abTests              ABTest[]
 
   @@map("users")
 }
@@ -88,13 +88,13 @@ model AgentTask {
   status           String    @default("processing")
   progress         Int       @default(0)
   currentAgent     String    @default("Orchestrator")
-  inputContext     Json?
   deepResearchData Json?
   generatedContent Json?
   completedAt      DateTime?
   logs             Json?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
+  inputContext     Json?
   user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, status])
@@ -133,8 +133,6 @@ model ContentBrain {
   caoCustomAgents         Json?
   caoLastRunAt            DateTime?
   caoStrategy             Json?
-  zapierWebhookUrl        String?
-  crmConfig               Json?
   user                    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("content_brains")
@@ -220,13 +218,13 @@ model CalendarItem {
   festivalTag      String?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
+  abTestId         String?
+  abVariant        String?
+  abTest           ABTest?         @relation(fields: [abTestId], references: [id])
   generatedAsset   GeneratedAsset? @relation(fields: [generatedAssetId], references: [id])
   user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  publishLogs      PublishLog[]
   leads            Lead[]
-  abTestId         String?
-  abVariant        String? // "A" or "B"
-  abTest           ABTest?         @relation(fields: [abTestId], references: [id])
+  publishLogs      PublishLog[]
 
   @@index([userId, scheduledAt])
   @@index([userId, status])
@@ -276,11 +274,11 @@ model PostAnalytics {
   fetchedAt        DateTime?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
+  abTestId         String?
+  abTest           ABTest?         @relation(fields: [abTestId], references: [id])
   generatedAsset   GeneratedAsset? @relation(fields: [generatedAssetId], references: [id])
   publishLog       PublishLog?     @relation(fields: [publishLogId], references: [id])
   user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  abTestId         String?
-  abTest           ABTest?         @relation(fields: [abTestId], references: [id])
 
   @@index([userId, platform])
   @@index([publishLogId])
@@ -637,28 +635,28 @@ model PlotComparable {
 }
 
 model Lead {
-  id              String         @id @default(cuid())
-  userId          String
-  source          String // e.g., "LinkedIn", "Instagram", "WhatsApp", "Manual"
-  name            String
-  phone           String?
-  email           String?
-  status          String // "NEW", "CONTACTED", "INTERESTED", "VISITED", "BOOKED", "LOST"
-  budget          Float?
-  location        String?
-  corridorNotes   String?
-  campaignId      String? // Ref to AgentTask or Campaign item
-  assetId         String? // Ref to specific GeneratedAsset that drove the lead
-  notes           String?
-  lastContactAt   DateTime?
-  activities      LeadActivity[]
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  calendarItemId  String?
-  calendarItem    CalendarItem?  @relation(fields: [calendarItemId], references: [id])
-  abTestId        String?
-  abTest          ABTest?        @relation(fields: [abTestId], references: [id])
+  id             String         @id @default(cuid())
+  userId         String
+  source         String
+  name           String
+  phone          String?
+  email          String?
+  status         String
+  budget         Float?
+  location       String?
+  corridorNotes  String?
+  campaignId     String?
+  assetId        String?
+  notes          String?
+  lastContactAt  DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  abTestId       String?
+  calendarItemId String?
+  activities     LeadActivity[]
+  abTest         ABTest?        @relation(fields: [abTestId], references: [id])
+  calendarItem   CalendarItem?  @relation(fields: [calendarItemId], references: [id])
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, status])
   @@index([userId, source])
@@ -668,7 +666,7 @@ model Lead {
 model LeadActivity {
   id        String   @id @default(cuid())
   leadId    String
-  type      String // "PHONE_CALL", "WHATSAPP_DM", "SITE_VISIT", "OFFER_MADE"
+  type      String
   notes     String?
   createdAt DateTime @default(now())
   lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
@@ -678,21 +676,21 @@ model LeadActivity {
 }
 
 model ABTest {
-  id                 String   @id @default(cuid())
-  userId             String
-  name               String
-  status             String // "RUNNING", "COMPLETED", "PAUSED"
-  variantA_assetId   String
-  variantB_assetId   String
-  variantA_metrics   Json? // { reach, engagement, clicks, leads }
-  variantB_metrics   Json?
-  winningVariant     String? // "A" or "B"
-  startedAt          DateTime @default(now())
-  endedAt            DateTime?
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  calendarItems      CalendarItem[]
-  postAnalytics      PostAnalytics[]
-  leads              Lead[]
+  id               String          @id @default(cuid())
+  userId           String
+  name             String
+  status           String
+  variantA_assetId String
+  variantB_assetId String
+  variantA_metrics Json?
+  variantB_metrics Json?
+  winningVariant   String?
+  startedAt        DateTime        @default(now())
+  endedAt          DateTime?
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  calendarItems    CalendarItem[]
+  leads            Lead[]
+  postAnalytics    PostAnalytics[]
 
   @@index([userId])
   @@map("ab_tests")
@@ -710,8 +708,6 @@ enum PlatformType {
   youtube
   x
   facebook
-  facebook_ads
-  google_business
   whatsapp
   website
 }
@@ -727,9 +723,9 @@ enum PostStatus {
   draft
   ready
   scheduled
-  publishing
   published
   failed
+  publishing
 }
 
 enum AssetType {

@@ -176,7 +176,7 @@ export default function AgencyHQPage() {
             </div>
           </div>
           <div className="space-y-3">
-            {(stats?.digestItems || ["Loading your intel..."]).map((item: string, i: number) => (
+            {(stats?.digestItems || ["⏳ Loading your intel..."]).map((item: string, i: number) => (
               <div
                 key={i}
                 className="flex items-start gap-3 bg-gray-50 rounded-2xl px-4 py-3 border border-gray-100"

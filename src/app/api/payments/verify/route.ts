@@ -3,6 +3,7 @@ import { getToken } from "next-auth/jwt";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { PLANS, type PlanTierKey } from "@/lib/plans";
+import { sendPaymentConfirmationEmail } from "@/lib/email";
 
 export async function POST(req: NextRequest) {
   try {
@@ -160,7 +161,17 @@ export async function POST(req: NextRequest) {
       }),
     ]);
 
-    // TODO: Send upgrade confirmation email when email module is ready
+    // Send upgrade confirmation email
+    try {
+      await sendPaymentConfirmationEmail(
+        updatedUser.email,
+        plan.name,
+        `₹${totalPaid}`
+      );
+    } catch (e) {
+      console.warn("Could not send confirmation email:", e);
+    }
+
     console.log(
       `[PAYMENT_VERIFY] Plan upgraded for ${updatedUser.email} → ${plan.name}`
     );

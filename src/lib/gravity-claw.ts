@@ -10,6 +10,8 @@ import { prisma } from "@/lib/prisma";
 import { callSarvamChat } from "@/lib/sarvam";
 import { getTopGoldenExamples, buildGoldenExamplesPromptBlock } from "@/lib/golden-loop";
 import { isSystemPaused, notifyFounder } from "@/lib/alerting";
+import { scrapeLinkedIn, scrapeInstagram, scrapeGoogleMapsReviews } from "@/lib/apify-master-scraper";
+import { searchYouTube, fetchTranscript } from "@/lib/youtube";
 
 // ─── Agent Communication Protocol (JSON Schema) ────────────────────────────
 export type AgentRole =
@@ -150,6 +152,44 @@ Respond in JSON: { "passed": true/false, "issues": ["issue1", "issue2"] }`;
   return { passed: true, issues: [] }; // default: let it through if audit itself fails
 }
 
+// ─── Deep Research Connector ────────────────────────────────────────────────
+async function performDeepResearch(taskId: string, goal: string, platforms: string[]): Promise<string> {
+  let results = "";
+  const topic = goal.split("\n\n").pop() || goal;
+
+  await logUpdate(taskId, `🔎 Deep Research triggered for: ${platforms.join(", ")}`, 16, "Research Specialist");
+
+  const pResults = await Promise.allSettled(platforms.map(async (p) => {
+    try {
+      if (p === "LinkedIn") {
+        const res = await scrapeLinkedIn(topic, 5);
+        return `[LINKEDIN INSIGHTS]:\n${res.posts.map(p => `- ${p.author}: ${p.text.substring(0, 200)}`).join("\n")}`;
+      }
+      if (p === "YouTube") {
+        const apiKey = process.env.YOUTUBE_API_KEY;
+        if (!apiKey) return "[YOUTUBE]: Error - YOUTUBE_API_KEY missing.";
+        const videos = await searchYouTube(topic, apiKey, 3);
+        const transcripts = await Promise.all(videos.map(v => fetchTranscript(v.videoId)));
+        return `[YOUTUBE INSIGHTS]:\n${videos.map((v, i) => `- Video: ${v.title} (${v.url})\n  Transcript Summary: ${transcripts[i].substring(0, 300)}`).join("\n")}`;
+      }
+      if (p === "Instagram") {
+        const res = await scrapeInstagram(topic.split(" ")[0], 5);
+        return `[INSTAGRAM INSIGHTS]:\n${res.posts.map(p => `- @${p.author}: ${p.text.substring(0, 200)} (Likes: ${p.likes})`).join("\n")}`;
+      }
+      if (p === "Google Maps") {
+        const res = await scrapeGoogleMapsReviews(topic, "Nagpur", 5);
+        return `[COMPETITOR REVIEWS]:\n${res.posts.map(p => `- Review: ${p.text.substring(0, 200)}`).join("\n")}`;
+      }
+      return "";
+    } catch (err: any) {
+      return `[ERROR: ${p}]: ${err.message}`;
+    }
+  }));
+
+  results = pResults.map(p => p.status === "fulfilled" ? p.value : "").filter(Boolean).join("\n\n");
+  return results || "No real-time data found. Falling back to browser knowledge.";
+}
+
 // ─── Main Gravity Claw Entry Point ────────────────────────────────────────────
 export async function runGravityClaw(taskId: string) {
   // ── Kill Switch Check ──
@@ -281,20 +321,28 @@ Output a clear, structured brief that the Research Specialist can act on. Label 
     // ══════════════════════════════════════════════════════════════
     workflow.steps[1].status = "running";
 
+    // ── Deep Research Trigger ──
+    let realTimeResearch = "";
+    const deepResearchPlatforms = (task as any)?.inputContext?.deepResearchPlatforms || [];
+    if (deepResearchPlatforms.length > 0) {
+      realTimeResearch = await performDeepResearch(taskId, task.goal, deepResearchPlatforms);
+    }
+
     const researchPrompt = `You are a world-class Real Estate Research Specialist.
 ${systemContext}
 
 CAMPAIGN BRIEF FROM CONTENT LEAD:
 ${contentLeadBrief}
 
-Your tasks:
-1. Identify 3 competitor content tactics currently dominating the Nagpur real estate space.
-2. Find GAPS in competitor content — topics, angles, formats they're missing.
-3. Surface 3 "lead-magnet" content angles that competitors are missing.
-4. Find any local market data (Nagpur plot prices, Ring Road impact, MIHAN growth, Saraswati Nagri trends).
-5. Proactively generate a RESEARCH BRIEF for the Content Lead — flag any discovered opportunity.
+${realTimeResearch ? `REAL-TIME SCRAPED DATA (USE THIS AS PRIMARY SOURCE):\n${realTimeResearch}` : ""}
 
-Return structured insights with clear section headers.`;
+Your tasks:
+1. Review the CAMPAIGN BRIEF and any REAL-TIME SCRAPED DATA.
+2. Identify 3 competitor content tactics currently dominating the Nagpur real estate space.
+3. Find GAPS in competitor content — topics, angles, formats they're missing.
+4. Surface 3 "lead-magnet" content angles that competitors are missing.
+5. Identify REAL companies or author names from the scrapped data.
+6. Return structured insights with clear section headers.`;
 
     const deepResearch = await callAgentWithRetry(
       "ResearchSpecialist",
@@ -685,10 +733,16 @@ Output ready-to-copy content blocks for each requested platform, labeled with [P
     };
 
     // Proactive campaign suggestion for next run
-    const proactiveSuggestion = await callSarvamChat(
-      `${systemContext}\n\nBased on this completed campaign for the goal: "${task.goal}", proactively suggest ONE follow-up campaign idea for the next 7 days. Consider NRI investors and Saraswati Nagri. Reply with: campaign title, target audience, primary platform, one-line hook.`,
-      "Suggest next campaign proactively."
-    ).catch(() => "");
+    let proactiveSuggestion = "";
+    try {
+      proactiveSuggestion = await callSarvamChat(
+        `${systemContext}\n\nBased on this completed campaign for the goal: "${task.goal}", proactively suggest ONE follow-up campaign idea for the next 7 days. Consider NRI investors and Saraswati Nagri. Reply with: campaign title, target audience, primary platform, one-line hook.`,
+        "Suggest next campaign proactively.",
+        500
+      );
+    } catch (e) {
+      console.warn("[GravityClaw] Proactive suggestion failed:", e);
+    }
 
     // Persist learning to ContentBrain
     if (brain) {

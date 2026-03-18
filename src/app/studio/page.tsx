@@ -14,6 +14,7 @@ import {
   X,
   Zap,
   Shield,
+  Search,
   Loader2,
   CheckCircle2,
   AlertCircle,
@@ -140,6 +141,7 @@ export default function AgenticOrchestrator() {
   const [selectedLanguage, setSelectedLanguage] = useState("Hinglish");
   const [selectedTone, setSelectedTone] = useState("Professional");
   const [marketingStage, setMarketingStage] = useState("Awareness");
+  const [researchPlatforms, setResearchPlatforms] = useState<string[]>(["LinkedIn", "YouTube"]);
 
   const [trendingBriefing, setTrendingBriefing] = useState<any[]>([]);
   const [isLoadingTrends, setIsLoadingTrends] = useState(false);
@@ -297,7 +299,7 @@ export default function AgenticOrchestrator() {
       return;
     }
     // Build structured goal
-    const structuredGoal = `Marketing Stage: ${marketingStage}\nPlatform: ${selectedPlatform}\nLanguage: ${selectedLanguage}\Tone: ${selectedTone}\n\nTask: ${newRunGoal}`;
+    const structuredGoal = `Marketing Stage: ${marketingStage}\nPlatform: ${selectedPlatform}\nLanguage: ${selectedLanguage}\nTone: ${selectedTone}\n\nTask: ${newRunGoal}`;
 
     setIsStartingRun(true);
     try {
@@ -306,7 +308,8 @@ export default function AgenticOrchestrator() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           goal: structuredGoal,
-          pattern: selectedPattern 
+          pattern: selectedPattern,
+          deepResearchPlatforms: researchPlatforms
         }),
       });
       if (res.ok) {
@@ -314,8 +317,9 @@ export default function AgenticOrchestrator() {
         setNewRunGoal("");
         setActiveTab("running"); // auto-switch to live view
       }
-    } catch {
-      toast.error("Failed to start campaign.");
+    } catch (err: any) {
+      console.error("Launch error:", err);
+      toast.error(`Error: ${err.message || "Failed to start campaign"}`);
     } finally {
       setIsStartingRun(false);
     }
@@ -516,6 +520,43 @@ export default function AgenticOrchestrator() {
                   </div>
                 </div>
 
+                <div className="mt-6 pt-6 border-t border-gray-100">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Search className="w-3.5 h-3.5 text-indigo-500" />
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                      Deep Research Platforms (Scraper Tool)
+                    </label>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { id: "LinkedIn", icon: "🔗" },
+                      { id: "YouTube", icon: "📺" },
+                      { id: "Instagram", icon: "📸" },
+                      { id: "Google Maps", icon: "📍" },
+                    ].map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => {
+                          setResearchPlatforms(prev => 
+                            prev.includes(p.id) ? prev.filter(x => x !== p.id) : [...prev, p.id]
+                          );
+                        }}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 transition-all text-[11px] font-bold ${
+                          researchPlatforms.includes(p.id)
+                            ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                            : "border-gray-100 bg-gray-50 text-gray-500 hover:border-gray-200"
+                        }`}
+                      >
+                        <span>{p.icon}</span>
+                        {p.id}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[9px] text-gray-400 mt-2 italic">
+                    * Selecting these will trigger real-time scrapers (LinkedIn, YT API) for deeper insights.
+                  </p>
+                </div>
+
                 <div className="flex items-center justify-between mt-6 gap-3 pt-6 border-t border-gray-100">
                   <p className="text-xs text-gray-400 font-medium">
                     💡 The AI team will adapt the hooks and emotional triggers based on your selection.
@@ -641,10 +682,10 @@ export default function AgenticOrchestrator() {
                                  ? stripMarkdown(cleaned).substring(0, 80) + "…" 
                                  : stripMarkdown(cleaned);
                              })()}
-                             <div className="absolute z-50 invisible group-hover:visible bg-slate-900 text-white p-3 rounded-xl w-64 -left-2 top-full mt-2 text-[10px] font-medium shadow-2xl border border-white/10 leading-relaxed">
-                               <p className="font-black text-indigo-400 mb-2 border-b border-white/10 pb-1">Full Brief Input:</p>
+                             <span className="absolute z-50 invisible group-hover:visible bg-slate-900 text-white p-3 rounded-xl w-64 -left-2 top-full mt-2 text-[10px] font-medium shadow-2xl border border-white/10 leading-relaxed pointer-events-none">
+                               <span className="block font-black text-indigo-400 mb-2 border-b border-white/10 pb-1">Full Brief Input:</span>
                                {task.goal}
-                             </div>
+                              </span>
                            </h4>
                            <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">
                              {task.source === "whatsapp" ? "📱 WhatsApp" : "💻 Web"} ·{" "}

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { performQualityCheck } from "@/lib/quality";
 
 export async function POST(req: Request) {
   try {
@@ -36,17 +37,23 @@ export async function POST(req: Request) {
        return NextResponse.json({ success: true, action: "rejected" });
     }
 
+    const body = editedText || contentItem.text;
+    const lang = contentItem.language || "english"; // Default if not specified
+    const quality = performQualityCheck(body, lang);
+
     // 2. Create GeneratedAsset
     const asset = await prisma.generatedAsset.create({
       data: {
         userId: user.id,
         type: "post", // Default
         platform: contentItem.platform?.toLowerCase() || "website",
-        body: editedText || contentItem.text,
+        language: lang.toLowerCase() as any,
+        body,
         title: task.goal.includes("Task:") 
                ? task.goal.split("Task:")[1].trim().substring(0, 100)
                : task.goal.split(/Tone:\s*[^\s]+\s*/i).pop()?.trim().substring(0, 100) || task.goal.substring(0, 100),
-        qualityScore: contentItem.qcScore || 8,
+        qualityScore: quality.score,
+        qualityIssues: quality.issues as any,
         createdAt: new Date(),
       }
     });

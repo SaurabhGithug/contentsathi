@@ -138,7 +138,7 @@ const faqs = [
   },
   {
     q: "Is my data safe?",
-    a: "Yes. All data is stored on Supabase (Mumbai region). OAuth tokens are encrypted with AES-256. We never sell, share, or train on your data. You can delete your account and all data at any time.",
+    a: "Yes. All data is stored on Neon (PostgreSQL). OAuth tokens are encrypted with AES-256. We never sell, share, or train on your data. You can delete your account and all data at any time.",
   },
   {
     q: "Can I cancel anytime?",
@@ -176,7 +176,7 @@ export default function LandingPage() {
           SECTION 1 — NAVBAR
       ╚═══════════════════════════════════════════════════════════ */}
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-5 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-6 md:px-10 h-16 flex items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5">
             <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-md shadow-indigo-200">
@@ -268,7 +268,7 @@ export default function LandingPage() {
             India&apos;s AI Content Partner for Real Estate Solopreneurs
           </div>
 
-          <h1 className="text-5xl md:text-7xl font-black text-gray-900 leading-[1.05] tracking-tight mb-6">
+          <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-gray-900 leading-[1.05] tracking-tight mb-6">
             Create a Week of{" "}
             <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
               Content in 2 Minutes
