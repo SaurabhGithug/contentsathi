@@ -90,12 +90,25 @@ export const authOptions: NextAuthOptions = {
       }
       return true;
     },
-    async jwt({ token, user }: any) {
-      // On first sign-in, attach user ID to JWT token
+    async jwt({ token, user, account }: any) {
+      // In NextAuth v4, modifying 'user' in signIn doesn't always flow to jwt().
+      // For Google sign in, we fetch the real DB user by email.
       if (user) {
-        token.id = user.id;
-        token.email = user.email;
-        token.name = user.name;
+        if (account?.provider === "google" && user.email) {
+          const dbUser = await prisma.user.findUnique({
+            where: { email: user.email.toLowerCase() },
+          });
+          if (dbUser) {
+            token.id = dbUser.id;
+            token.email = dbUser.email;
+            token.name = dbUser.name;
+          }
+        } else {
+          // Normal email/password login
+          token.id = user.id;
+          token.email = user.email;
+          token.name = user.name;
+        }
       }
       return token;
     },
