@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { rateLimit, RATE_LIMITS, rateLimitResponse } from "@/lib/utils/rate-limiter";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/utils/auth";
+import { sendWaitlistConfirmationEmail } from "@/lib/utils/email";
 
 export async function POST(req: Request) {
   try {
@@ -31,6 +32,9 @@ export async function POST(req: Request) {
       update: { userId }, // update userId if they logged in later
       create: { email, userId },
     });
+
+    // Send confirmation email
+    await sendWaitlistConfirmationEmail(email);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
