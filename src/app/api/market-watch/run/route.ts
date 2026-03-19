@@ -33,15 +33,20 @@ export async function POST(req: Request) {
 
     // 4. Inject into the PlotComparable Database table
     for (const item of items) {
+      // Cast fields to string for database safety
+      const locality = typeof item.locality === 'string' ? item.locality : 
+                      (typeof item.locality === 'object' && item.locality !== null) ? JSON.stringify(item.locality) : 
+                      String(item.locality || "");
+
       await prisma.plotComparable.create({
         data: {
           userId: "admin", // Depending on who triggered it
-          corridor: item.locality || "Unknown",
+          corridor: String(locality || "Unknown"),
           source: "apify",
-          sourceUrl: item.url || url,
-          title: item.title,
-          priceLabel: item.price,
-          scrapedAt: new Date(item.scrapedAt || Date.now()),
+          sourceUrl: String(item.url || url || ""),
+          title: String(item.title || ""),
+          priceLabel: String(item.price || ""),
+          scrapedAt: new Date(String(item.scrapedAt || Date.now())),
         },
       });
     }
