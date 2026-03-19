@@ -50,6 +50,54 @@ export async function POST(req: Request) {
     const lowerMsg = message.toLowerCase().trim();
     const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3001";
 
+    let user = await prisma.user.findFirst({
+      where: { phone: from },
+      include: { contentBrain: true },
+    });
+
+    if (!user) {
+      // Fallback for demo: pick the most recent user
+      user = await prisma.user.findFirst({
+        orderBy: { updatedAt: 'desc' },
+        include: { contentBrain: true },
+      });
+      if (!user) return NextResponse.json({ error: "No user found to process task." }, { status: 404 });
+    }
+
+    // ── 1. AUTONOMOUS APPROVAL LOOP (THE 10/10 FEATURE) ────────
+    const approvalSynonyms = ["yes", "approve", "go ahead", "looks good", "do it", "approved"];
+    if (approvalSynonyms.some(word => lowerMsg === word || lowerMsg.startsWith(word))) {
+      // Find the most recent Draft Calendar Item for this user
+      const pendingPost = await prisma.calendarItem.findFirst({
+        where: { userId: user.id, status: "draft" },
+        orderBy: { createdAt: "desc" },
+        include: { generatedAsset: true }
+      });
+
+      if (pendingPost) {
+        // Mark it as Scheduled/Ready. Set schedule to T+5 minutes.
+        const scheduledTime = new Date(Date.now() + 5 * 60 * 1000);
+        await prisma.calendarItem.update({
+          where: { id: pendingPost.id },
+          data: { 
+            status: "scheduled", 
+            scheduledAt: scheduledTime 
+          }
+        });
+
+        return NextResponse.json({
+          success: true,
+          action: "auto_approved",
+          message: `✅ Post Approved autonomously! It has been scheduled for publishing at ${scheduledTime.toLocaleTimeString()}. ContentSathi is handling the rest.`
+        });
+      } else {
+        return NextResponse.json({
+          success: true,
+          message: "You said approve, but I couldn't find any pending draft posts in your queue."
+        });
+      }
+    }
+
     // Market Watch / Hunter commands
     if (
       lowerMsg.includes("analyze") ||
@@ -83,20 +131,6 @@ export async function POST(req: Request) {
     }
 
     // AI Co-Founder instruction (everything else)
-
-    let user = await prisma.user.findFirst({
-      where: { phone: from },
-      include: { contentBrain: true },
-    });
-
-    if (!user) {
-      // Fallback for demo: pick the most recent user
-      user = await prisma.user.findFirst({
-        orderBy: { updatedAt: 'desc' },
-        include: { contentBrain: true },
-      });
-      if (!user) return NextResponse.json({ error: "No user found to process task." }, { status: 404 });
-    }
 
     // 1. Log the incoming command as a Background Task in DB
     const bgTask = await (prisma.agentTask as any).create({

@@ -18,6 +18,17 @@
   .text-balance {
     text-wrap: balance;
   }
+  .bg-300\% {
+    background-size: 300%;
+  }
+  .animate-gradient {
+    animation: gradientShift 4s ease infinite;
+  }
+}
+
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
 }
 
 @layer utilities {

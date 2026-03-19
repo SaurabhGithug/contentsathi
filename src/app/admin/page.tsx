@@ -472,7 +472,7 @@ export default function AdminPanel() {
                   </div>
 
                   {lead.message && (
-                    <p className="text-xs text-gray-400 line-clamp-2 mb-3 bg-gray-800/50 p-2 rounded-lg leading-relaxed">"{lead.message}"</p>
+                    <p className="text-xs text-gray-400 line-clamp-2 mb-3 bg-gray-800/50 p-2 rounded-lg leading-relaxed">&quot;{lead.message}&quot;</p>
                   )}
 
                   {lead.notes && (
