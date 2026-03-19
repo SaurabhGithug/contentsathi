@@ -283,6 +283,11 @@ export default function LandingPage() {
                     {href.replace("#", "")}
                   </a>
                 ))}
+                {!session && (
+                  <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)} className="text-lg font-medium text-indigo-600">
+                    Log in
+                  </Link>
+                )}
                 <a href="#waitlist" onClick={() => setMobileMenuOpen(false)} className="mt-2 px-5 py-3 bg-gray-900 text-white rounded-xl font-bold text-center">
                   Get Early Access
                 </a>
@@ -847,6 +852,9 @@ export default function LandingPage() {
                 <li><a href="#demo" className="hover:text-indigo-400 transition-colors">Demo Video</a></li>
                 <li><a href="#pricing" className="hover:text-indigo-400 transition-colors">Pricing (Coming Soon)</a></li>
                 <li><a href="#waitlist" className="hover:text-indigo-400 transition-colors">Join Waitlist</a></li>
+                {!session && (
+                  <li><Link href="/auth/login" className="text-indigo-400 hover:text-indigo-300 transition-colors">Admin Login</Link></li>
+                )}
               </ul>
             </div>
 
