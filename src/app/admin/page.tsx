@@ -134,10 +134,10 @@ export default function AdminPanel() {
     if (status !== "authenticated" || !user?.isAdmin) return;
     setIsLoading(true);
     Promise.all([fetchStats(), fetchUsers(), fetchLeads()]).finally(() => setIsLoading(false));
-  }, [status, user]);
+  }, [status, user, fetchStats, fetchUsers, fetchLeads]);
 
-  useEffect(() => { if (status === "authenticated" && user?.isAdmin) fetchUsers(); }, [userSearch, userPlanFilter]);
-  useEffect(() => { if (status === "authenticated" && user?.isAdmin) fetchLeads(); }, [leadStatusFilter, leadTypeFilter]);
+  useEffect(() => { if (status === "authenticated" && user?.isAdmin) fetchUsers(); }, [userSearch, userPlanFilter, fetchUsers, status, user?.isAdmin]);
+  useEffect(() => { if (status === "authenticated" && user?.isAdmin) fetchLeads(); }, [leadStatusFilter, leadTypeFilter, fetchLeads, status, user?.isAdmin]);
 
   const updateUser = async (userId: string, action: string, value: any) => {
     const res = await fetch("/api/admin/users", {
@@ -310,8 +310,8 @@ export default function AdminPanel() {
                   {[
                     { label: "View All Users", icon: Users, onClick: () => setActiveTab("users") },
                     { label: "View All Leads", icon: MessageSquare, onClick: () => setActiveTab("leads") },
+                    { label: "Waitlist", icon: Mail, href: "/admin/waitlist" },
                     { label: "System Health", icon: Activity, onClick: () => setActiveTab("system") },
-                    { label: "Use as User", icon: LayoutDashboard, href: "/dashboard" },
                   ].map((action: any) => (
                     action.href ? (
                       <Link key={action.label} href={action.href}
