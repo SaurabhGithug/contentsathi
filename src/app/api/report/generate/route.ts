@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { callSarvamChat, callSarvamJSON } from "@/lib/sarvam";
-import { gatherReportIntelligence } from "@/lib/multi-source-hunter";
+import { authOptions } from "@/lib/utils/auth";
+import { callSarvamChat, callSarvamJSON } from "@/lib/ai/sarvam";
+import { gatherReportIntelligence } from "@/lib/intelligence/multi-source-hunter";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;

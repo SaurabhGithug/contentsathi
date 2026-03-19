@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
-import { dispatchPublication } from "@/lib/publish-dispatcher";
+import { prisma } from "@/lib/db/prisma";
+import { authOptions } from "@/lib/utils/auth";
+import { dispatchPublication } from "@/lib/publishers/publish-dispatcher";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Sparkles, ArrowRight, LayoutDashboard, Calendar, BarChart2, FolderOpen } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/utils";
 
 interface EmptyStateProps {
   type: "calendar" | "analytics" | "library" | "dashboard";

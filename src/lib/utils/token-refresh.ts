@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/db/prisma";
 
 // ── Token Refresh Utility ──────────────────────────────────────────────────
 // Checks if a SocialAccount's token needs refresh and refreshes it if needed.

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { PLANS, type PlanTierKey } from "@/lib/plans";
+import { prisma } from "@/lib/db/prisma";
+import { PLANS, type PlanTierKey } from "@/lib/utils/plans";
 
 // GET /api/cron/reset-credits
 // Runs on the 1st of every month at midnight IST.

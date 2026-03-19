@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { runCaoIntelligence } from "@/lib/cao-brain";
+import { prisma } from "@/lib/db/prisma";
+import { runCaoIntelligence } from "@/lib/agents/cao-brain";
 
 export const runtime = "nodejs";
 export const maxDuration = 300; // Allow it 5 minutes to sweep all users

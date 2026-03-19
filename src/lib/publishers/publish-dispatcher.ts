@@ -1,8 +1,8 @@
-import { prisma } from "@/lib/prisma";
-import { publishToLinkedIn } from "./publishers/linkedin";
-import { publishToInstagram } from "./publishers/instagram";
-import { publishToWhatsApp } from "./publishers/whatsapp";
-import { publishToYouTube } from "./publishers/youtube";
+import { prisma } from "@/lib/db/prisma";
+import { publishToLinkedIn } from "./linkedin";
+import { publishToInstagram } from "./instagram";
+import { publishToWhatsApp } from "./whatsapp";
+import { publishToYouTube } from "./youtube";
 
 export async function dispatchPublication(calendarItemId: string) {
   const item = await prisma.calendarItem.findUnique({

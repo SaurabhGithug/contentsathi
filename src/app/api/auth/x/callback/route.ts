@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { encryptToken } from "@/lib/encryption";
-import { pendingVerifiers } from "@/lib/twitter-cache";
+import { prisma } from "@/lib/db/prisma";
+import { encryptToken } from "@/lib/utils/encryption";
+import { pendingVerifiers } from "@/lib/utils/twitter-cache";
 
 export const dynamic = "force-dynamic";
 

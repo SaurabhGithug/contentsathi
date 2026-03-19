@@ -1,5 +1,5 @@
-import { marketHunter } from "./lib/social-scraper";
-import { prisma } from "./lib/prisma";
+import { marketHunter } from "@/lib/intelligence/social-scraper";
+import { prisma } from "@/lib/db/prisma";
 import * as dotenv from "dotenv";
 
 dotenv.config({ path: ".env" });

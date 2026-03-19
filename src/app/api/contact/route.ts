@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { sendEmail } from "@/lib/email";
+import { prisma } from "@/lib/db/prisma";
+import { sendEmail } from "@/lib/utils/email";
 
 const ADMIN_EMAIL = "dangalesaurabh1996@gmail.com";
 

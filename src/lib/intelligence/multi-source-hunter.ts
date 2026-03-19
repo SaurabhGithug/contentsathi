@@ -8,7 +8,7 @@
  * ════════════════════════════════════════════════════════════════════
  */
 
-import { searchWeb } from "@/lib/tavily";
+import { searchWeb } from "@/lib/intelligence/tavily";
 
 export type IntelligenceSource =
   | "linkedin"

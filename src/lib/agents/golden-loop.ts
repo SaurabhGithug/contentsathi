@@ -7,8 +7,8 @@
  * ════════════════════════════════════════════════════════════════════
  */
 
-import { prisma } from "@/lib/prisma";
-import { callSarvamJSON } from "@/lib/sarvam";
+import { prisma } from "@/lib/db/prisma";
+import { callSarvamJSON } from "@/lib/ai/sarvam";
 
 // Use (prisma as any) for models that the generated client may not type yet
 const db = prisma as any;

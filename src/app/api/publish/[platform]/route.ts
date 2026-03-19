@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/db/prisma";
 import { publishToInstagram } from "@/lib/publishers/instagram";
 import { publishToLinkedIn } from "@/lib/publishers/linkedin";
 import { publishToYouTube } from "@/lib/publishers/youtube";

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/db/prisma";
 import crypto from "crypto";
-import { PLANS, type PlanTierKey } from "@/lib/plans";
+import { PLANS, type PlanTierKey } from "@/lib/utils/plans";
 
 // POST /api/payments/webhook
 // Handles incoming Razorpay webhook events.

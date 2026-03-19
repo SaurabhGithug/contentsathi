@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/db/prisma";
 
 // GET /api/cron/publish-scheduled
 // Called every minute by Vercel Cron or local polling.

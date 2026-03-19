@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import crypto from "crypto";
-import { prisma } from "@/lib/prisma";
-import { PLANS, type PlanTierKey } from "@/lib/plans";
-import { sendPaymentConfirmationEmail } from "@/lib/email";
+import { prisma } from "@/lib/db/prisma";
+import { PLANS, type PlanTierKey } from "@/lib/utils/plans";
+import { sendPaymentConfirmationEmail } from "@/lib/utils/email";
 
 export async function POST(req: NextRequest) {
   try {

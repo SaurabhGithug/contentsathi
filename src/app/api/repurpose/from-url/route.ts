@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { callGemini } from "@/lib/gemini";
-import { SYSTEM_PROMPT_BASE, buildRepurposeDetailedPrompt } from "@/lib/prompts";
-import { prisma } from "@/lib/prisma";
+import { authOptions } from "@/lib/utils/auth";
+import { callGemini } from "@/lib/ai/gemini";
+import { SYSTEM_PROMPT_BASE, buildRepurposeDetailedPrompt } from "@/lib/ai/prompts";
+import { prisma } from "@/lib/db/prisma";
 import * as cheerio from "cheerio";
 import fetch from "node-fetch";
-import { extractVideoId, fetchTranscript } from "@/lib/youtube";
-import { sanitizeText } from "@/lib/sanitize";
+import { extractVideoId, fetchTranscript } from "@/lib/ai/youtube";
+import { sanitizeText } from "@/lib/utils/sanitize";
 
 export async function POST(req: Request) {
   try {

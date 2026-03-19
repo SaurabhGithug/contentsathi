@@ -1,5 +1,5 @@
 import { ApifyClient } from 'apify-client';
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/db/prisma";
 
 const client = new ApifyClient({
     token: process.env.APIFY_API_TOKEN,

@@ -6,12 +6,12 @@
  * ════════════════════════════════════════════════════════════════════
  */
 
-import { prisma } from "@/lib/prisma";
-import { callSarvamChat } from "@/lib/sarvam";
-import { getTopGoldenExamples, buildGoldenExamplesPromptBlock } from "@/lib/golden-loop";
-import { isSystemPaused, notifyFounder } from "@/lib/alerting";
-import { scrapeLinkedIn, scrapeInstagram, scrapeGoogleMapsReviews } from "@/lib/apify-master-scraper";
-import { searchYouTube, fetchTranscript } from "@/lib/youtube";
+import { prisma } from "@/lib/db/prisma";
+import { callSarvamChat } from "@/lib/ai/sarvam";
+import { getTopGoldenExamples, buildGoldenExamplesPromptBlock } from "@/lib/agents/golden-loop";
+import { isSystemPaused, notifyFounder } from "@/lib/utils/alerting";
+import { scrapeLinkedIn, scrapeInstagram, scrapeGoogleMapsReviews } from "@/lib/intelligence/apify-master-scraper";
+import { searchYouTube, fetchTranscript } from "@/lib/ai/youtube";
 
 // ─── Agent Communication Protocol (JSON Schema) ────────────────────────────
 export type AgentRole =

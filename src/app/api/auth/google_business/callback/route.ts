@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { encryptToken } from "@/lib/encryption";
+import { prisma } from "@/lib/db/prisma";
+import { encryptToken } from "@/lib/utils/encryption";
 
 export const dynamic = "force-dynamic";
 

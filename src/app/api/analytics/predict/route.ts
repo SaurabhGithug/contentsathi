@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
-import { callGemini } from "@/lib/gemini";
-import { SYSTEM_PROMPT_BASE } from "@/lib/prompts";
+import { prisma } from "@/lib/db/prisma";
+import { authOptions } from "@/lib/utils/auth";
+import { callGemini } from "@/lib/ai/gemini";
+import { SYSTEM_PROMPT_BASE } from "@/lib/ai/prompts";
 
 // POST /api/analytics/predict
 // Body: { postBody: string, platform: string, language: string, postType?: string }

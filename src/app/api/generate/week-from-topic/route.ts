@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { prisma } from "@/lib/prisma";
-import { callGemini } from "@/lib/gemini";
-import { SYSTEM_PROMPT_BASE, buildWeekFromTopicPrompt } from "@/lib/prompts";
-import { authOptions } from "@/lib/auth";
-import { sanitizeText } from "@/lib/sanitize";
-import { rateLimit, RATE_LIMITS, rateLimitResponse } from "@/lib/rate-limiter";
-import { transcreateWithSarvam, isSarvamSupported } from "@/lib/sarvam";
-import { performQualityCheck } from "@/lib/quality";
+import { prisma } from "@/lib/db/prisma";
+import { callGemini } from "@/lib/ai/gemini";
+import { SYSTEM_PROMPT_BASE, buildWeekFromTopicPrompt } from "@/lib/ai/prompts";
+import { authOptions } from "@/lib/utils/auth";
+import { sanitizeText } from "@/lib/utils/sanitize";
+import { rateLimit, RATE_LIMITS, rateLimitResponse } from "@/lib/utils/rate-limiter";
+import { transcreateWithSarvam, isSarvamSupported } from "@/lib/ai/sarvam";
+import { performQualityCheck } from "@/lib/utils/quality";
 
 export async function POST(req: Request) {
   try {

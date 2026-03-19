@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { callSarvamChat } from "@/lib/sarvam";
+import { prisma } from "@/lib/db/prisma";
+import { callSarvamChat } from "@/lib/ai/sarvam";
 
 export const runtime = "nodejs";
 

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { prisma } from "@/lib/prisma";
-import { getValidToken } from "@/lib/token-refresh";
+import { prisma } from "@/lib/db/prisma";
+import { getValidToken } from "@/lib/utils/token-refresh";
 
 export async function POST(req: Request) {
   const session = await getServerSession();

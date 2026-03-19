@@ -1,7 +1,7 @@
 import { getToken } from "next-auth/jwt";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { rateLimit, detectRouteCategory, RATE_LIMITS, rateLimitResponse } from "@/lib/rate-limiter";
+import { rateLimit, detectRouteCategory, RATE_LIMITS, rateLimitResponse } from "@/lib/utils/rate-limiter";
 
 const PROTECTED_ROUTES = [
   "/cao",

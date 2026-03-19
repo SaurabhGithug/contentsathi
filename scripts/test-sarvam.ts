@@ -1,4 +1,4 @@
-import { callSarvamJSON } from "./lib/sarvam";
+import { callSarvamJSON } from "@/lib/ai/sarvam";
 
 async function main() {
   const systemPrompt = `You are a real estate expert. Return JSON ONLY matching this format:

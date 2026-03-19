@@ -1,4 +1,4 @@
-import { decryptToken } from "@/lib/encryption";
+import { decryptToken } from "@/lib/utils/encryption";
 
 export interface WhatsAppPublishRequest {
   accessToken: string;

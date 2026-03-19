@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ApifyClient } from "apify-client";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/db/prisma";
 
 export async function POST(req: Request) {
   try {

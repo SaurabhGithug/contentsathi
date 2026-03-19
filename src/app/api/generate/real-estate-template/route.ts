@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { callGemini } from "@/lib/gemini";
-import { SYSTEM_PROMPT_BASE, buildRealEstateTemplatePrompt } from "@/lib/prompts";
-import { sanitizeText } from "@/lib/sanitize";
-import { transcreateWithSarvam, isSarvamSupported } from "@/lib/sarvam";
+import { callGemini } from "@/lib/ai/gemini";
+import { SYSTEM_PROMPT_BASE, buildRealEstateTemplatePrompt } from "@/lib/ai/prompts";
+import { sanitizeText } from "@/lib/utils/sanitize";
+import { transcreateWithSarvam, isSarvamSupported } from "@/lib/ai/sarvam";
 
 export async function POST(req: Request) {
   try {
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
     try {
       const session = await getServerSession();
       if (session?.user?.email) {
-        const { prisma } = await import("@/lib/prisma");
+        const { prisma } = await import("@/lib/db/prisma");
         const user = await prisma.user.findUnique({ where: { email: session.user.email } });
         if (user) brain = await prisma.contentBrain.findUnique({ where: { userId: user.id } });
       }

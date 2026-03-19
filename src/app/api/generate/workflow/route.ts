@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { rateLimit, RATE_LIMITS } from "@/lib/rate-limiter";
-import { sanitizeText } from "@/lib/sanitize";
+import { authOptions } from "@/lib/utils/auth";
+import { prisma } from "@/lib/db/prisma";
+import { rateLimit, RATE_LIMITS } from "@/lib/utils/rate-limiter";
+import { sanitizeText } from "@/lib/utils/sanitize";
 import {
   SARVAM_LANGUAGE_CONFIGS, INDIC_LANGUAGES, generateIndicContent,
   callSarvamJSON, callSarvamChat,
   buildThinkerSystemPrompt, buildWriterSystemPrompt,
   FREE_TIER_PLATFORMS, FREE_TIER_LANGUAGES, FREE_TIER_MONTHLY_LIMIT,
-} from "@/lib/sarvam";
-import { getLiveIntelligenceForTopic, type LiveIntelligenceContext } from "@/lib/live-intelligence-db";
+} from "@/lib/ai/sarvam";
+import { getLiveIntelligenceForTopic, type LiveIntelligenceContext } from "@/lib/db/live-intelligence-db";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";

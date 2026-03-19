@@ -15,10 +15,10 @@
  */
 
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { callSarvamChat } from "@/lib/sarvam";
-import { searchWeb } from "@/lib/tavily";
-import { isValuationIntent, parsePlotFromMessage, ValuationRequest } from "@/lib/valuation";
+import { prisma } from "@/lib/db/prisma";
+import { callSarvamChat } from "@/lib/ai/sarvam";
+import { searchWeb } from "@/lib/intelligence/tavily";
+import { isValuationIntent, parsePlotFromMessage, ValuationRequest } from "@/lib/utils/valuation";
 
 export const runtime = "nodejs";
 export const maxDuration = 90; // Allow up to 90s for full orchestration

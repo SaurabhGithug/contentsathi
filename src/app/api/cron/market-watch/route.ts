@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { callSarvamChat, callSarvamJSON } from "@/lib/sarvam";
+import { prisma } from "@/lib/db/prisma";
+import { callSarvamChat, callSarvamJSON } from "@/lib/ai/sarvam";
 import fs from "fs";
 import path from "path";
 

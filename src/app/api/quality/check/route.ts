@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { performQualityCheck } from "@/lib/quality";
+import { authOptions } from "@/lib/utils/auth";
+import { performQualityCheck } from "@/lib/utils/quality";
 
 export async function POST(req: Request) {
   try {

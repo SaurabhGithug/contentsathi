@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/db/prisma";
 import { addDays, startOfDay, endOfDay, subDays } from "date-fns";
 
 // ── 7 Content Pillars ─────────────────────────────────────────────────────

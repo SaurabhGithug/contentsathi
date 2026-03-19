@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/db/prisma";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "@/lib/utils/auth";
 import { addDays, format, startOfWeek, getDay, setHours, setMinutes } from "date-fns";
 
 // ── Optimal posting schedule based on RE audience behaviour ──────────────────

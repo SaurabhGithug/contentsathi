@@ -1,6 +1,6 @@
 import { ApifyClient } from 'apify-client';
-import { prisma } from '@/lib/prisma';
-import { searchWeb } from '@/lib/tavily';
+import { prisma } from '@/lib/db/prisma';
+import { searchWeb } from '@/lib/intelligence/tavily';
 import { MarketSignal } from '@/types/market';
 
 const apifyClient = new ApifyClient({

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { callSarvamChat } from "@/lib/sarvam";
-import { isValuationIntent, parsePlotFromMessage } from "@/lib/valuation";
-import { isOperationalQuery, runOperationalQuery } from "@/lib/cao-ops";
+import { authOptions } from "@/lib/utils/auth";
+import { prisma } from "@/lib/db/prisma";
+import { callSarvamChat } from "@/lib/ai/sarvam";
+import { isValuationIntent, parsePlotFromMessage } from "@/lib/utils/valuation";
+import { isOperationalQuery, runOperationalQuery } from "@/lib/agents/cao-ops";
 
 export const runtime = "nodejs";
 export const maxDuration = 90;

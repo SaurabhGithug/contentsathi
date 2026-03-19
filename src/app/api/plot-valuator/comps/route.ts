@@ -12,13 +12,13 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { authOptions } from "@/lib/utils/auth";
+import { prisma } from "@/lib/db/prisma";
 import {
   scrapePropertyPortals,
   scrapeLocalDevSites,
   saveComparablesToDB,
-} from "@/lib/apify-master-scraper";
+} from "@/lib/intelligence/apify-master-scraper";
 
 import type { Session } from "next-auth";
 

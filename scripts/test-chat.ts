@@ -1,4 +1,4 @@
-import { callSarvamChat } from "./lib/sarvam";
+import { callSarvamChat } from "@/lib/ai/sarvam";
 
 async function main() {
   const systemPrompt = `You are the Chief AI Officer (CAO). You talk like a highly intelligent, proactive, data-driven Chief of Staff in a fast-paced agency.`;

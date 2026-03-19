@@ -36,7 +36,7 @@ import {
   subDays,
   parseISO
 } from "date-fns";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/utils";
 import ScheduleModal from "@/components/ScheduleModal";
 import PostCard from "@/components/PostCard";
 import RefreshModal from "@/components/RefreshModal";

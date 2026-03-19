@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { analyzeContent } from "@/lib/quality-checker";
-import { sanitizeText } from "@/lib/sanitize";
+import { analyzeContent } from "@/lib/utils/quality-checker";
+import { sanitizeText } from "@/lib/utils/sanitize";
 
 export async function POST(req: Request) {
   try {

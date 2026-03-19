@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { callGemini } from "@/lib/gemini";
-import { SYSTEM_PROMPT_BASE, buildRepurposeDetailedPrompt } from "@/lib/prompts";
-import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
-import { sanitizeText } from "@/lib/sanitize";
+import { callGemini } from "@/lib/ai/gemini";
+import { SYSTEM_PROMPT_BASE, buildRepurposeDetailedPrompt } from "@/lib/ai/prompts";
+import { prisma } from "@/lib/db/prisma";
+import { authOptions } from "@/lib/utils/auth";
+import { sanitizeText } from "@/lib/utils/sanitize";
 
 export async function POST(req: Request) {
   try {

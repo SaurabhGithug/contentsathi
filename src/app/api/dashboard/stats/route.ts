@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/db/prisma";
 import { startOfDay, endOfDay, startOfWeek, subWeeks, format } from "date-fns";
 
 export async function GET() {

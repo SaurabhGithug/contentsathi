@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
-import { rateLimit, RATE_LIMITS, rateLimitResponse } from "@/lib/rate-limiter";
-import { sanitizeText } from "@/lib/sanitize";
-import { encryptToken } from "@/lib/encryption";
+import { prisma } from "@/lib/db/prisma";
+import { authOptions } from "@/lib/utils/auth";
+import { rateLimit, RATE_LIMITS, rateLimitResponse } from "@/lib/utils/rate-limiter";
+import { sanitizeText } from "@/lib/utils/sanitize";
+import { encryptToken } from "@/lib/utils/encryption";
 
 // WhatsApp Business — Manual Token Save
 // POST body: { phoneNumberId, accessToken, businessAccountId, testNumber? }

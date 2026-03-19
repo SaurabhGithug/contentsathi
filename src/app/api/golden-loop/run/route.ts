@@ -5,8 +5,8 @@
  */
 
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { detectAndSaveWinners, getGoldenLoopStats } from "@/lib/golden-loop";
+import { prisma } from "@/lib/db/prisma";
+import { detectAndSaveWinners, getGoldenLoopStats } from "@/lib/agents/golden-loop";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;

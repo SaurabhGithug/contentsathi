@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { encryptToken } from "@/lib/encryption";
+import { authOptions } from "@/lib/utils/auth";
+import { prisma } from "@/lib/db/prisma";
+import { encryptToken } from "@/lib/utils/encryption";
 
 // ── Instagram OAuth Callback ─────────────────────────────────────────────────
 // Facebook redirects here with ?code=... after user approves the OAuth dialog.

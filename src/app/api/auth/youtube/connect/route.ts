@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "@/lib/utils/auth";
 
 export async function GET() {
   const BASE = (process.env.NEXTAUTH_URL || "http://localhost:3000").replace(/\/$/, "");

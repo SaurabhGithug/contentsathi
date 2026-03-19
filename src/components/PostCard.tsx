@@ -28,12 +28,12 @@ import {
   BarChart2,
   Globe
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/utils";
 import ScheduleModal from "./ScheduleModal";
 import PublishModal from "./PublishModal";
 import RefreshModal from "./RefreshModal";
 import PerformancePredictor from "./PerformancePredictor";
-import { analyzeContent, QualityScore } from "@/lib/quality-checker";
+import { analyzeContent, QualityScore } from "@/lib/utils/quality-checker";
 
 interface PostCardProps {
   post: {

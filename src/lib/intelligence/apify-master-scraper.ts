@@ -11,7 +11,7 @@
  */
 
 import { ApifyClient } from "apify-client";
-import { notifyFounder } from "@/lib/alerting";
+import { notifyFounder } from "@/lib/utils/alerting";
 
 const apify = new ApifyClient({
   token: process.env.APIFY_API_TOKEN,
@@ -731,7 +731,7 @@ export async function saveComparablesToDB(
   userId: string,
   listings: PortalListing[]
 ): Promise<{ saved: number; skipped: number }> {
-  const { prisma } = await import("@/lib/prisma");
+  const { prisma } = await import("@/lib/db/prisma");
   let saved = 0, skipped = 0;
 
   for (const l of listings) {

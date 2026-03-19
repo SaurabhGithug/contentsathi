@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { rateLimit, RATE_LIMITS, rateLimitResponse } from "@/lib/rate-limiter";
+import { prisma } from "@/lib/db/prisma";
+import { rateLimit, RATE_LIMITS, rateLimitResponse } from "@/lib/utils/rate-limiter";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "@/lib/utils/auth";
 
 export async function POST(req: Request) {
   try {

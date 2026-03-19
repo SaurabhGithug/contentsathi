@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { callSarvamJSON, callSarvamChat } from "@/lib/sarvam";
-import { gatherMultiSourceIntelligence } from "@/lib/multi-source-hunter";
+import { authOptions } from "@/lib/utils/auth";
+import { prisma } from "@/lib/db/prisma";
+import { callSarvamJSON, callSarvamChat } from "@/lib/ai/sarvam";
+import { gatherMultiSourceIntelligence } from "@/lib/intelligence/multi-source-hunter";
 
 export const runtime = "nodejs";
 export const maxDuration = 90; // Extended for multi-source search

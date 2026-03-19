@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/prisma";
-import { callSarvamChat } from "@/lib/sarvam";
+import { prisma } from "@/lib/db/prisma";
+import { callSarvamChat } from "@/lib/ai/sarvam";
 
 // Simulated function to push a message back to WhatsApp (via Twilio/Meta API in prod)
 async function sendWhatsAppNotification(phone: string, message: string) {

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { prisma } from "@/lib/prisma";
-import { callGemini } from "@/lib/gemini";
+import { prisma } from "@/lib/db/prisma";
+import { callGemini } from "@/lib/ai/gemini";
 
 export async function POST(req: Request) {
   try {

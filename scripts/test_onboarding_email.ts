@@ -3,7 +3,7 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 dotenv.config({ path: '.env.local' });
 
-import { sendPaymentConfirmationEmail } from './src/lib/email';
+import { sendPaymentConfirmationEmail } from '@/lib/utils/email';
 
 async function testEmail() {
   console.log('📧 Sending Onboarding Test Email...');

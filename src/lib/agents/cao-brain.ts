@@ -1,9 +1,9 @@
-import { prisma } from "@/lib/prisma";
-import { callSarvamJSON } from "@/lib/sarvam";
-import { runGravityClaw } from "@/lib/gravity-claw";
-import { fetchSocialIntelligence } from "@/lib/market-intelligence";
-import { detectAndSaveWinners } from "@/lib/golden-loop";
-import { isSystemPaused, notifyFounder } from "@/lib/alerting";
+import { prisma } from "@/lib/db/prisma";
+import { callSarvamJSON } from "@/lib/ai/sarvam";
+import { runGravityClaw } from "@/lib/intelligence/gravity-claw";
+import { fetchSocialIntelligence } from "@/lib/intelligence/market-intelligence";
+import { detectAndSaveWinners } from "@/lib/agents/golden-loop";
+import { isSystemPaused, notifyFounder } from "@/lib/utils/alerting";
 
 /**
  * CAO Brain — The "Thinking" engine of the master AI agent.

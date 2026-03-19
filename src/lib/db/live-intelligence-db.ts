@@ -19,9 +19,9 @@
  * ════════════════════════════════════════════════════════════════════
  */
 
-import { prisma } from "@/lib/prisma";
-import { runFullIntelligenceScrape, type IntelligenceSummary } from "@/lib/apify-master-scraper";
-import { searchWeb } from "@/lib/tavily";
+import { prisma } from "@/lib/db/prisma";
+import { runFullIntelligenceScrape, type IntelligenceSummary } from "@/lib/intelligence/apify-master-scraper";
+import { searchWeb } from "@/lib/intelligence/tavily";
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 

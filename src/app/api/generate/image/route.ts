@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { sanitizeText } from "@/lib/sanitize";
-import { rateLimit, RATE_LIMITS, rateLimitResponse } from "@/lib/rate-limiter";
+import { authOptions } from "@/lib/utils/auth";
+import { sanitizeText } from "@/lib/utils/sanitize";
+import { rateLimit, RATE_LIMITS, rateLimitResponse } from "@/lib/utils/rate-limiter";
 
 const FEATURE_FLAG_ENABLED = process.env.ENABLE_IMAGE_GENERATION !== "false";
 

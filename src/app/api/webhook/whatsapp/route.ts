@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { runAutonomousOrchestrator } from "@/lib/orchestrator-autonomous";
+import { prisma } from "@/lib/db/prisma";
+import { runAutonomousOrchestrator } from "@/lib/agents/orchestrator-autonomous";
 
 export const runtime = "nodejs";
 

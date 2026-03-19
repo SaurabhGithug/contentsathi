@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { sanitizeText } from "@/lib/sanitize";
+import { authOptions } from "@/lib/utils/auth";
+import { sanitizeText } from "@/lib/utils/sanitize";
 import {
   callSarvamJSON, callSarvamChat,
   buildThinkerSystemPrompt, buildWriterSystemPrompt,
-} from "@/lib/sarvam";
+} from "@/lib/ai/sarvam";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";

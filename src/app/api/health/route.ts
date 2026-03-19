@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { isSystemPaused, toggleSystemPause } from "@/lib/alerting";
+import { prisma } from "@/lib/db/prisma";
+import { isSystemPaused, toggleSystemPause } from "@/lib/utils/alerting";
 
 export async function GET() {
   try {

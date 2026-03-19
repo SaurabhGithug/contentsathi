@@ -12,9 +12,9 @@
 
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { refreshIntelligenceDB } from "@/lib/live-intelligence-db";
+import { authOptions } from "@/lib/utils/auth";
+import { prisma } from "@/lib/db/prisma";
+import { refreshIntelligenceDB } from "@/lib/db/live-intelligence-db";
 
 export const maxDuration = 300; // 5 minutes max for Vercel Pro
 export const dynamic = "force-dynamic";

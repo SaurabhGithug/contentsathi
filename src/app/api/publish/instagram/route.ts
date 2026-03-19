@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/db/prisma";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { decryptToken } from "@/lib/encryption";
+import { authOptions } from "@/lib/utils/auth";
+import { decryptToken } from "@/lib/utils/encryption";
 
 export async function POST(req: Request) {
     let calendarItemId: string | undefined;

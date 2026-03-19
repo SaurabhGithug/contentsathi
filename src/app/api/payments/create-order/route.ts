@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
-import { prisma } from "@/lib/prisma";
-import { PLANS, GST_RATE, type PlanTierKey } from "@/lib/plans";
+import { prisma } from "@/lib/db/prisma";
+import { PLANS, GST_RATE, type PlanTierKey } from "@/lib/utils/plans";
 
 export async function POST(req: NextRequest) {
   try {

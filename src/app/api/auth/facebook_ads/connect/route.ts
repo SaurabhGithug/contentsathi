@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "@/lib/utils/auth";
 
 // Facebook Ads Manager OAuth
 // Uses the same Facebook App but requests ads_management scope

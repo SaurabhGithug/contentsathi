@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { extractVideoId, fetchTranscript, trimTranscript, searchYouTube, fetchVideoMeta, VideoInfo } from "@/lib/youtube";
+import { extractVideoId, fetchTranscript, trimTranscript, searchYouTube, fetchVideoMeta, VideoInfo } from "@/lib/ai/youtube";
 
 // ─── Route Handler ─────────────────────────────────────────────────────────
 
