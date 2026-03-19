@@ -219,7 +219,17 @@ export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [videoOpen, setVideoOpen] = useState(false);
-  const waitlistCount = useCounter(347, 2200);
+    const [realWaitlistCount, setRealWaitlistCount] = useState(347);
+    const waitlistCount = useCounter(realWaitlistCount, 2200);
+
+    useEffect(() => {
+      fetch("/api/waitlist/count")
+        .then(res => res.json())
+        .then(data => {
+          if (data.count) setRealWaitlistCount(data.count);
+        })
+        .catch(err => console.error("Failed to fetch waitlist count:", err));
+    }, []);
 
   return (
     <div className="bg-[#f8f8ff] text-gray-900 font-sans min-h-screen overflow-x-hidden selection:bg-indigo-200 selection:text-indigo-900">
@@ -852,9 +862,6 @@ export default function LandingPage() {
                 <li><a href="#demo" className="hover:text-indigo-400 transition-colors">Demo Video</a></li>
                 <li><a href="#pricing" className="hover:text-indigo-400 transition-colors">Pricing (Coming Soon)</a></li>
                 <li><a href="#waitlist" className="hover:text-indigo-400 transition-colors">Join Waitlist</a></li>
-                {!session && (
-                  <li><Link href="/auth/login" className="text-indigo-400 hover:text-indigo-300 transition-colors">Admin Login</Link></li>
-                )}
               </ul>
             </div>
 

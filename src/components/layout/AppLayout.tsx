@@ -8,11 +8,20 @@ import { usePathname } from "next/navigation";
 export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   
-  // Do not show Sidebar and Header on the root/landing page if it's meant to be onboarding.
-  // Actually, let's keep it simple: always show it unless it's /onboarding.
-  const isOnboarding = pathname === "/onboarding" || pathname === "/" || pathname.startsWith("/auth");
+  // Path check for public pages, auth, and admin (admin handles its own layout)
+  const isPublicLayout = 
+    pathname === "/" || 
+    pathname.startsWith("/auth") || 
+    pathname === "/onboarding" ||
+    pathname === "/privacy" || 
+    pathname === "/privacy-policy" || 
+    pathname === "/terms" || 
+    pathname === "/about" || 
+    pathname === "/contact" ||
+    pathname === "/pricing" ||
+    pathname.startsWith("/admin");
 
-  if (isOnboarding) {
+  if (isPublicLayout) {
     return (
       <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
         {children}
